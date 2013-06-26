@@ -3,36 +3,29 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 
-
-#define DHTPIN 2     // what pin we're connected to
-// Uncomment whatever type you're using!
-#define DHTTYPE DHT11   // DHT 11 
-//#define DHTTYPE DHT22   // DHT 22  (AM2302)
-//#define DHTTYPE DHT21   // DHT 21 (AM2301)
+// DHT sensor settings
 // Connect pin 1 (on the left) of the sensor to +5V
-// Connect pin 2 of the sensor to whatever your DHTPIN is
+// Connect pin 2 of the sensor to whatever Datapin you choose
 // Connect pin 4 (on the right) of the sensor to GROUND
 // Connect a 10K resistor from pin 2 (data) to pin 1 (power) of the sensor
-DHT dht(DHTPIN, DHTTYPE);
+DHT dht1(3, DHT11); // #1 is connected to Pin3 and type is DHT11
+DHT dht2(4, DHT11); // #2 is connected to Pin4 and type is DHT11
 
-// Connections:
+// LCD Panel Connections:
 // rs (LCD pin 4) to Arduino pin 12
 // rw (LCD pin 5) to Arduino pin 11
 // enable (LCD pin 6) to Arduino pin 10
-// LCD pin 15 to Arduino pin 13
-// LCD pins d4, d5, d6, d7 to Arduino pins 7, 6, 5, 4
-LiquidCrystal lcd(12, 11, 10, 7, 6, 5, 4);
+// LCD pins d4, d5, d6, d7 to Arduino pins 9, 8, 7, 6
+LiquidCrystal lcd(12, 11, 10, 9, 8, 7, 6);
 
 // Data wire is plugged into port 2 on the Arduino
-#define ONE_WIRE_BUS 3
-
 // Setup a oneWire instance to communicate with any OneWire devices (not just Maxim/Dallas temperature ICs)
-OneWire oneWire(ONE_WIRE_BUS);
+OneWire oneWire(2);
 
 // Pass our oneWire reference to Dallas Temperature. 
-DallasTemperature sensors(&oneWire);
-DeviceAddress Probe01 = { 0x28, 0x39, 0x31, 0xEA, 0x03, 0x00, 0x00, 0x9A }; 
-DeviceAddress Probe02 = { 0x28, 0x11, 0x35, 0xEA, 0x03, 0x00, 0x00, 0x92 };
+DallasTemperature onewire(&oneWire);
+DeviceAddress Probe01 = { 0x28, 0x0B, 0x4D, 0xC6, 0x04, 0x00, 0x00, 0x4D }; 
+DeviceAddress Probe02 = { 0x28, 0x35, 0xD8, 0xC6, 0x04, 0x00, 0x00, 0xD6 };
 
 
 void setup() {
@@ -52,54 +45,62 @@ void setup() {
   delay(1000);
   lcd.clear();
   lcd.setCursor(0,0);
-  lcd.print("In  Hum.:");
+  lcd.print("Probe01:");
   lcd.setCursor(0,1);
-  lcd.print("In  Temp:");
+  lcd.print("");
   lcd.setCursor(-4,2);
-  lcd.print("Out Hum.:");
+  lcd.print("Probe02:");
   lcd.setCursor(-4,3);
-  lcd.print("Out Temp:");
+  lcd.print("");
   
-  dht.begin();
-  sensors.begin();
+  dht1.begin();
+  dht2.begin();
+  onewire.begin();
 }
 
 void loop() {
   // Reading temperature or humidity takes about 250 milliseconds!
   // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
-  float hin = dht.readHumidity();
-  float hout = 0;
-  sensors.requestTemperatures();
-  float tin = sensors.getTempC(Probe01);
-  float tout = sensors.getTempC(Probe02);
+  onewire.requestTemperatures();
+  float hin = dht1.readHumidity();
+  float hout = dht2.readHumidity();
+  float tin = onewire.getTempC(Probe01);
+  float tout = onewire.getTempC(Probe02);
 
   // check if returns are valid, if they are NaN (not a number) then something went wrong!
-  if (isnan(tin) || isnan(hin)) {
-    Serial.println("Failed to read from DHT");
-  } else {
-    Serial.print("H-in: "); 
-    Serial.print(hin);
-    Serial.print("\tT-in: "); 
-    Serial.print(tin);
-    Serial.print("\tH-out: "); 
-    Serial.print(hout);
-    Serial.print("\tT-out: "); 
-    Serial.println(tout);
-    lcd.setCursor(10,0);
-    lcd.print(int(hin));
-    lcd.print(" %  ");
-    lcd.setCursor(10,1);
-    lcd.print(int(tin));
+  Serial.print("H-in: "); 
+  Serial.print(hin);
+  Serial.print("\tT-in: "); 
+  Serial.print(tin);
+  Serial.print("\tH-out: "); 
+  Serial.print(hout);
+  Serial.print("\tT-out: "); 
+  Serial.println(tout);
+  lcd.setCursor(1,1);
+  if ( tin < 10 && tin > 0 ) {
     lcd.print(" ");
-    lcd.print(char(223));
-    lcd.print("C");
-    lcd.setCursor(6,2);
-    lcd.print(int(hout));
-    lcd.print(" %  ");
-    lcd.setCursor(6,3);
-    lcd.print(int(tout));
-    lcd.print(" ");
-    lcd.print(char(223));
-    lcd.print("C");
   }
+  lcd.print(tin, 1);
+  lcd.print(char(223));
+  lcd.print("C ");
+  lcd.setCursor(9,1);
+  if ( hin < 10 ) {
+    lcd.print(" ");
+  }
+  lcd.print(hin, 0);
+  lcd.print("% ");
+  lcd.setCursor(-2,3);
+  lcd.setCursor(-3,3);
+  if ( tout < 10 && tout > 0 ) {
+    lcd.print(" ");
+  }
+  lcd.print(tout, 1);
+  lcd.print(char(223));
+  lcd.print("C ");
+  lcd.setCursor(5,3);
+  if ( hout < 10 ) {
+    lcd.print(" ");
+  }
+  lcd.print(hout, 0);
+  lcd.print("% ");
 }
