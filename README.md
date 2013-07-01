@@ -22,3 +22,9 @@ DHT11 Library
 This project uses the generic DHT11 library, however for the JSON output to work
 on the serial line, the DHT.cpp file must be editted to remove the lines 
 containing "Serial.print()"
+
+Serial Output
+=============
+
+Serial Output is JSON, the output looks like this:
+{ "WeatherDuino": [ { "probe": 1, "temp": 23, "humid", 45}, { "probe": 2, "temp": 15, "humid": 74 } ] }

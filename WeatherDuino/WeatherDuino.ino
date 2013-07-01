@@ -69,23 +69,23 @@ void loop() {
   
   // Check if returns are valid, if they are NaN (not a number) then something went wrong!
   // Note: DHT11 sometimes returns 0 instead of NaN if it fails to read the probe.
-  Serial.print("{ \"WeatherDuino\": { \"Probe1\": { \"Temp\": "); 
+  Serial.print("{ \"WeatherDuino\": [{ \"probe\": 1, \"temp\": "); 
   Serial.print(tin);
-  Serial.print(", \"Humid\": ");
+  Serial.print(", \"humid\": ");
   if ( isnan(hin) || hin == 0 ) {
     Serial.print(-127.00);
   } else {
     Serial.print(hin);
   }
-  Serial.print(" }, \"Probe2\": { \"Temp\": ");
+  Serial.print(" }, {\"probe\": 2, \"temp\": ");
   Serial.print(tout);
-  Serial.print(", \"Humid\": ");
+  Serial.print(", \"humid\": ");
   if ( isnan(hout) || hout == 0 ) {
     Serial.print(-127.00);
   } else {
     Serial.print(hout);
   }
-  Serial.println(" } } }");
+  Serial.println(" } ] }");
 
   // LCD line 2
   lcd.setCursor(1,1);
