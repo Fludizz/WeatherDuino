@@ -82,35 +82,37 @@ def ProcessRRDdata(path, rrd, name, axis_unit, inval, outval, defs=DEFRRD):
           "LINE1:outdoor#0000FF:Outdoor\:",
           "GPRINT:outdoor:AVERAGE:%%6.1lf%s\\r" % unit)
     else:
-      rrdtool.graph(
-          "%s-%s.png" % (imgname, delta), 
-          "--start", TIMEDELTA[delta],
-          "--vertical-label=%s (%s)" % (name, axis_unit),
-          "--slope-mode",
-          "DEF:inavg=%s:In:AVERAGE" % rrdfile,
-          "DEF:outavg=%s:Out:AVERAGE" % rrdfile,
-          "DEF:inmin=%s:In:MIN" % rrdfile,
-          "DEF:outmin=%s:Out:MIN" % rrdfile,
-          "DEF:inmax=%s:In:MAX" % rrdfile,
-          "DEF:outmax=%s:Out:MAX" % rrdfile,
-          "LINE1:inmax#FFFF00:In Max:",
-          "GPRINT:inmax:MAX:%%6.1lf%s" % unit,
-          "LINE1:outmax#00FFFF:Out Max:",
-          "GPRINT:outmax:MAX:%%6.1lf%s\\r" % unit,
-          "LINE1:inavg#00FF00:In Avg:",
-          "GPRINT:inavg:AVERAGE:%%6.1lf%s" % unit,
-          "LINE1:outavg#0000FF:Out Avg:",
-          "GPRINT:outavg:AVERAGE:%%6.1lf%s\\r" % unit,
-          "LINE1:inmin#AAFF00:In Min:",
-          "GPRINT:inmin:MIN:%%6.1lf%s" % unit,
-          "LINE1:outmin#00AAFF:Out Min:",
-          "GPRINT:outmin:MIN:%%6.1lf%s\\r" % unit)
+      # Only generate the "slower" graphs every 30m.
+      if int(time.strftime('%M')) % 30 == 0:
+        rrdtool.graph(
+            "%s-%s.png" % (imgname, delta), 
+            "--start", TIMEDELTA[delta],
+            "--vertical-label=%s (%s)" % (name, axis_unit),
+            "--slope-mode",
+            "DEF:inavg=%s:In:AVERAGE" % rrdfile,
+            "DEF:outavg=%s:Out:AVERAGE" % rrdfile,
+            "DEF:inmin=%s:In:MIN" % rrdfile,
+            "DEF:outmin=%s:Out:MIN" % rrdfile,
+            "DEF:inmax=%s:In:MAX" % rrdfile,
+            "DEF:outmax=%s:Out:MAX" % rrdfile,
+            "LINE1:inmax#FFFF00:In Max:",
+            "GPRINT:inmax:MAX:%%6.1lf%s" % unit,
+            "LINE1:outmax#00FFFF:Out Max:",
+            "GPRINT:outmax:MAX:%%6.1lf%s\\r" % unit,
+            "LINE1:inavg#00FF00:In Avg:",
+            "GPRINT:inavg:AVERAGE:%%6.1lf%s" % unit,
+            "LINE1:outavg#0000FF:Out Avg:",
+            "GPRINT:outavg:AVERAGE:%%6.1lf%s\\r" % unit,
+            "LINE1:inmin#AAFF00:In Min:",
+            "GPRINT:inmin:MIN:%%6.1lf%s" % unit,
+            "LINE1:outmin#00AAFF:Out Min:",
+            "GPRINT:outmin:MIN:%%6.1lf%s\\r" % unit)
 
 
 def GetWeatherDevice(device="/dev/ttyUSB0", baud=57600):
   ''' Generate a device/object useable for the program, if it is a valid device
   (e.g. a WeatherDuino). '''
-  weatherduino = serial.Serial(device, baud, timeout=10)
+  weatherduino = serial.Serial(device, baud, timeout=30)
   weatherduino.setDTR(True)
   weatherduino.setDTR(False)
   # Clear the initial junk from the buffer
@@ -129,24 +131,28 @@ def ContinualRRDwrite(arduino, fdestination, fprefix):
   if not os.path.exists(fdestination):
     raise Exception('Destination path does not exist.')
   print "Writing weatherdata to files '%s%s*'" % (fdestination,fprefix)
+  oldtime = None
   while True:
-    arduino.flushInput()
     arduino.readline()
-    data = arduino.readline().strip()
-    for items in json.loads(data)['WeatherDuino']:
-      if items['probe'] == 1:
-        intemp, inhum = items['temp'], items['humid']
-      elif items['probe'] == 2:
-        outtemp, outhum = items['temp'], items['humid']
-      else:
-        print "Ignoring probe with ID %i" % items['probe']
-    print "[%s] Probe 1: T%s H%s; Probe 2: T%s H%s" % (time.ctime(), intemp, 
-                                                       inhum, outtemp, outhum)
-    ProcessRRDdata(fdestination, "%s_temp.rrd" % fprefix, "Temp", 
-                   u"\u00B0C".encode('utf8'), intemp, outtemp)
-    ProcessRRDdata(fdestination, "%s_humid.rrd" % fprefix, "Humid", 
-                   u"%".encode('utf8'), inhum, outhum)
-    time.sleep(60)
+    # Only process the data once per 5 minutes but keep reading the buffer. This
+    # constant reading is required because otherwise the serial device times out
+    newtime = int(time.strftime('%M'))
+    if not newtime == oldtime and newtime % 5 == 0:
+      oldtime = newtime
+      data = arduino.readline().strip()
+      for items in json.loads(data)['WeatherDuino']:
+        if items['probe'] == 1:
+          intemp, inhum = items['temp'], items['humid']
+        elif items['probe'] == 2:
+          outtemp, outhum = items['temp'], items['humid']
+        else:
+          print "Ignoring probe with ID %i" % items['probe']
+      print "[%s] Probe 1: T%s H%s; Probe 2: T%s H%s" % (time.ctime(), intemp, 
+                                                         inhum, outtemp, outhum)
+      ProcessRRDdata(fdestination, "%s_temp.rrd" % fprefix, "Temp", 
+                     u"\u00B0C".encode('utf8'), intemp, outtemp)
+      ProcessRRDdata(fdestination, "%s_humid.rrd" % fprefix, "Humid", 
+                     u"%".encode('utf8'), inhum, outhum)
   
   
 if __name__ == '__main__':
