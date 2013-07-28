@@ -59,33 +59,34 @@ void setup() {
 }
 
 void loop() {
-  // Reading temperature or humidity takes about 250 milliseconds!
-  // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
+  // Request a temperature measurement from the OneWire Probes
   onewire.requestTemperatures();
+  // Read humidity from each DHT sensor (DHT is a very slow sensor)
   float hin = dht1.readHumidity();
   float hout = dht2.readHumidity();
+  // Read temperatures from each OneWire Probe.
   float tin = onewire.getTempC(Probe01);
   float tout = onewire.getTempC(Probe02);
   
   // Check if returns are valid, if they are NaN (not a number) then something went wrong!
   // Note: DHT11 sometimes returns 0 instead of NaN if it fails to read the probe.
-  Serial.print("{ \"WeatherDuino\": [{ \"probe\": 1, \"temp\": "); 
+  Serial.print("{\"WeatherDuino\":[{\"probe\":1,\"temp\":"); 
   Serial.print(tin);
-  Serial.print(", \"humid\": ");
+  Serial.print(",\"humid\":");
   if ( isnan(hin) || hin == 0 ) {
     Serial.print(-127.00);
   } else {
     Serial.print(hin);
   }
-  Serial.print(" }, {\"probe\": 2, \"temp\": ");
+  Serial.print("},{\"probe\":2,\"temp\":");
   Serial.print(tout);
-  Serial.print(", \"humid\": ");
+  Serial.print(",\"humid\":");
   if ( isnan(hout) || hout == 0 ) {
     Serial.print(-127.00);
   } else {
     Serial.print(hout);
   }
-  Serial.println(" } ] }");
+  Serial.println("}]}");
 
   // LCD line 2
   lcd.setCursor(1,1);
