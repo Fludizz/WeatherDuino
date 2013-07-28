@@ -6,8 +6,8 @@ the new graphs.
 
 More information on how to build this device:
 http://frack.nl/wiki/WeatherDuino """
-_author__ = 'Rudi Daemen <fludizz@gmail.com>'
-__version__ = '0.1'
+__author__ = 'Rudi Daemen <fludizz@gmail.com>'
+__version__ = '0.2'
 
 import rrdtool
 import sys
@@ -119,27 +119,35 @@ def GetWeatherDevice(device="/dev/ttyUSB0", baud=57600):
   weatherduino.flushInput()
   weatherduino.readline()
   if "WeatherDuino" in json.loads(weatherduino.readline()):
-    print "Found WeatherDuino device on %s at %s." % (device,baud)
+    print "%s (%sbps): WeatherDuino initialized!" % (device,baud)
     return weatherduino
   else:
-    raise Exception('Device is not a WeatherDuino!')
+    raise Exception('Device %s (%sbps) is not a WeatherDuino!' % (device, baud))
 
 
-def ContinualRRDwrite(arduino, fdestination, fprefix):
+def ContinualRRDwrite(device, baud, fdestination, fprefix):
   ''' With the returned WeatherDuino device, run an endless loop collecting and
   writing weather data. '''
   if not os.path.exists(fdestination):
-    raise Exception('Destination path does not exist.')
+    raise Exception('Destination path \'%s\' does not exist.' % fdestination)
   print "Writing weatherdata to files '%s%s*'" % (fdestination,fprefix)
   oldtime = None
+  # Initialize the WeatherDuino!
+  arduino = GetWeatherDevice(device, baud)
+  # clear any potential junk from the buffer
+  arduino.readline()
   while True:
-    arduino.readline()
+    try:
+      data = arduino.readline().strip()
+    except serial.serialutil.SerialException, err:
+      print "[%s] Error: %s" % (time.ctime(), err)
+      sys.exit(1)
+      pass
     # Only process the data once per 5 minutes but keep reading the buffer. This
     # constant reading is required because otherwise the serial device times out
     newtime = int(time.strftime('%M'))
     if not newtime == oldtime and newtime % 5 == 0:
       oldtime = newtime
-      data = arduino.readline().strip()
       for items in json.loads(data)['WeatherDuino']:
         if items['probe'] == 1:
           intemp, inhum = items['temp'], items['humid']
@@ -173,5 +181,4 @@ if __name__ == '__main__':
     sys.exit(1)
   except IndexError:
     pass
-  weatherduino = GetWeatherDevice(opts.device, opts.baud)
-  ContinualRRDwrite(weatherduino, opts.path, opts.file)
+  ContinualRRDwrite(opts.device, opts.baud, opts.path, opts.file)
