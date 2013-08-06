@@ -47,26 +47,36 @@ TIMEDELTA = {"day": "-86400",
              "year": "-31536000" }
 
 
+def UpdateRRDfile(path, rrd, inval, outval):
+  ''' This function only writes collected data to the RRD File but does NOT 
+  write new images. This increases the data detail for the daily graphs. This
+  does not need to be called more often however due to the Humidity probes being
+  relativly inaccurate (only whole percents at a time), this causes a smoother
+  graph for the humidity data. '''
+  if not path:
+    path = '.'
+  rrdfile = "%s/%s" % (path, rrd)
+  # Check if the rrdfile exists and create if needed.
+  if not os.path.isfile(rrdfile):
+    print "INFO: RRD file %s does not exist. Creating a new RRD file." % rrdfile
+    rrdtool.create(rrdfile, defs)
+  # update the data in the rrdfile:
+  rrdtool.update(rrdfile, "N:%s:%s" % (inval, outval))
+
+
 def ProcessRRDdata(path, rrd, name, axis_unit, inval, outval, defs=DEFRRD):
-  ''' This function checks (and optionally creates) the required rrd file and
-  will update this file with the data provided. After updating the file, it will
-  generate the required graphs. '''
-  if path:
-    rrdfile = "%s/%s" % (path, rrd)
-    imgname = "%s/%s" % (path, name)
-  else:
-    rrdfile = rrd
-    imgname = name
+  ''' This function updates the graphs using the RRDfile at path/rrd. It will
+  always generate a new daily graph on each run. However, it will only create
+  the weekly/monthly/yearly graphs once every 30 minutes. '''
+  if not path:
+    path = "."
+  rrdfile = "%s/%s" % (path, rrd)
+  imgname = "%s/%s" % (path, name)
   # Dirty fix for the escaping mismatch... RRDtool uses the % sign in *some*
   # parameters as the escaping character but not in the axis unit. This cause
   # the escape value to break the rrd graph generation. If the unit is %, make
   # it an escaped % sign ('%%') and don't do this for the axis.
   unit = axis_unit.replace('%', '%%')
-  # Check if the rrdfile exists and create if needed.
-  if not os.path.isfile(rrdfile):
-    rrdtool.create(rrdfile, defs)
-  # update the data in the rrdfile:
-  rrdtool.update(rrdfile, "N:%s:%s" % (inval, outval))
   # Generate graphs for each configured Delta in TIMEDELTA:
   for delta in TIMEDELTA.keys():
     if delta == "day":
@@ -126,11 +136,15 @@ def GetWeatherDevice(device="/dev/ttyUSB0", baud=57600):
 
 
 def ContinualRRDwrite(device, baud, fdestination, fprefix):
-  ''' With the returned WeatherDuino device, run an endless loop collecting and
+  ''' Open the WeatherDuino device, run an endless loop for collecting and 
   writing weather data. '''
+  if not fdestination:
+    fdestination = "."
   if not os.path.exists(fdestination):
     raise Exception('Destination path \'%s\' does not exist.' % fdestination)
-  print "Writing weatherdata to files '%s%s*'" % (fdestination,fprefix)
+  print "Writing weatherdata to files '%s/%s*'" % (fdestination,fprefix)
+  humidrrd = "%s_humid.rrd" % fprefix
+  temprrd = "%s_temp.rrd" % fprefix
   oldtime = None
   # Initialize the WeatherDuino!
   arduino = GetWeatherDevice(device, baud)
@@ -145,24 +159,28 @@ def ContinualRRDwrite(device, baud, fdestination, fprefix):
       pass
     # Only process the data once per 5 minutes but keep reading the buffer. This
     # constant reading is required because otherwise the serial device times out
+    for items in json.loads(data)['WeatherDuino']:
+      if items['probe'] == 1:
+        intemp, inhum = items['temp'], items['humid']
+      elif items['probe'] == 2:
+        outtemp, outhum = items['temp'], items['humid']
+      else:
+        print "Ignoring probe with ID %i" % items['probe']
+    print "[%s] Probe 1: T%s H%s; Probe 2: T%s H%s" % (time.ctime(), intemp, 
+                                                       inhum, outtemp, outhum)
+    # Update RRDfile regardless of the graphs/time
+    UpdateRRDfile(fdestination, temprrd, intemp, outtemp)
+    UpdateRRDfile(fdestination, humidrrd, inhum, outhum)
+    # every 5 minutes, generate graphs:
     newtime = int(time.strftime('%M'))
     if not newtime == oldtime and newtime % 5 == 0:
       oldtime = newtime
-      for items in json.loads(data)['WeatherDuino']:
-        if items['probe'] == 1:
-          intemp, inhum = items['temp'], items['humid']
-        elif items['probe'] == 2:
-          outtemp, outhum = items['temp'], items['humid']
-        else:
-          print "Ignoring probe with ID %i" % items['probe']
-      print "[%s] Probe 1: T%s H%s; Probe 2: T%s H%s" % (time.ctime(), intemp, 
-                                                         inhum, outtemp, outhum)
-      ProcessRRDdata(fdestination, "%s_temp.rrd" % fprefix, "Temp", 
-                     u"\u00B0C".encode('utf8'), intemp, outtemp)
-      ProcessRRDdata(fdestination, "%s_humid.rrd" % fprefix, "Humid", 
-                     u"%".encode('utf8'), inhum, outhum)
-  
-  
+      ProcessRRDdata(fdestination, temprrd, "Temp", u"\u00B0C".encode('utf8'), 
+                     intemp, outtemp)
+      ProcessRRDdata(fdestination, humidrrd, "Humid", u"%".encode('utf8'), 
+                     inhum, outhum)
+
+
 if __name__ == '__main__':
   usage = "usage: %prog [options]"
   parser = optparse.OptionParser(usage=usage)
@@ -170,7 +188,7 @@ if __name__ == '__main__':
                     help="The serial device the Arduino is connected to.")
   parser.add_option("-b", "--baud", metavar="BAUD", default=57600, type="int",
                     help="Baudrate at which the Arduino is communicating.")
-  parser.add_option("-p", "--path", metavar="PATH", default="./",
+  parser.add_option("-p", "--path", metavar="PATH", default=".",
                     help="Destination path where the RRD & graphs are written")
   parser.add_option("-f", "--file", metavar="FILE", default="WeatherDuino",
                     help="Filename prefix for the RRD files.")
