@@ -88,9 +88,9 @@ def ProcessRRDdata(path, rrd, name, axis_unit, inval, outval, defs=DEFRRD):
           "DEF:indoor=%s:In:AVERAGE" % rrdfile,
           "DEF:outdoor=%s:Out:AVERAGE" % rrdfile,
           "LINE1:indoor#00FF00:Indoor\:",
-          "GPRINT:indoor:AVERAGE:%%6.1lf%s" % unit,
+          "GPRINT:indoor:LAST:%%6.1lf%s" % unit,
           "LINE1:outdoor#0000FF:Outdoor\:",
-          "GPRINT:outdoor:AVERAGE:%%6.1lf%s\\r" % unit)
+          "GPRINT:outdoor:LAST:%%6.1lf%s\\r" % unit)
     else:
       # Only generate the "slower" graphs every 30m.
       if int(time.strftime('%M')) % 30 == 0:
@@ -109,10 +109,10 @@ def ProcessRRDdata(path, rrd, name, axis_unit, inval, outval, defs=DEFRRD):
             "GPRINT:inmax:MAX:%%6.1lf%s" % unit,
             "LINE1:outmax#00FFFF:Out Max:",
             "GPRINT:outmax:MAX:%%6.1lf%s\\r" % unit,
-            "LINE1:inavg#00FF00:In Avg:",
-            "GPRINT:inavg:AVERAGE:%%6.1lf%s" % unit,
-            "LINE1:outavg#0000FF:Out Avg:",
-            "GPRINT:outavg:AVERAGE:%%6.1lf%s\\r" % unit,
+            "LINE1:inavg#00FF00:In Cur:",
+            "GPRINT:inavg:LAST:%%6.1lf%s" % unit,
+            "LINE1:outavg#0000FF:Out Cur:",
+            "GPRINT:outavg:LAST:%%6.1lf%s\\r" % unit,
             "LINE1:inmin#AAFF00:In Min:",
             "GPRINT:inmin:MIN:%%6.1lf%s" % unit,
             "LINE1:outmin#00AAFF:Out Min:",
