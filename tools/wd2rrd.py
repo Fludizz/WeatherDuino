@@ -47,7 +47,7 @@ TIMEDELTA = {"day": "-86400",
              "year": "-31536000" }
 
 
-def UpdateRRDfile(path, rrd, inval, outval):
+def UpdateRRDfile(path, rrd, inval, outval, defs=DEFRRD):
   ''' This function only writes collected data to the RRD File but does NOT 
   write new images. This increases the data detail for the daily graphs. This
   does not need to be called more often however due to the Humidity probes being
@@ -64,7 +64,7 @@ def UpdateRRDfile(path, rrd, inval, outval):
   rrdtool.update(rrdfile, "N:%s:%s" % (inval, outval))
 
 
-def ProcessRRDdata(path, rrd, name, axis_unit, inval, outval, defs=DEFRRD):
+def ProcessRRDdata(path, rrd, name, axis_unit, inval, outval):
   ''' This function updates the graphs using the RRDfile at path/rrd. It will
   always generate a new daily graph on each run. However, it will only create
   the weekly/monthly/yearly graphs once every 30 minutes. '''
