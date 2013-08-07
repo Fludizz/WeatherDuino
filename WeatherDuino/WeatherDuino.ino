@@ -68,29 +68,38 @@ void loop() {
   float tin = onewire.getTempC(Probe01);
   float tout = onewire.getTempC(Probe02);
   
-  // Check if returns are valid, if they are NaN (not a number) then something went wrong!
-  // Note: DHT11 sometimes returns 0 instead of NaN if it fails to read the probe.
+  // The DS18B20 returns 85 when it cannot get a value or faults.
+  // Catch this invalid-reading value (85) and set it to -127.
+  if ( tin == 85 ) {
+    tin = -127;
+  }
+  if ( tout == 85 ) {
+    tout = -127;
+  }
+  // The DHT11 returns either NaN or 0 when it cannot get a value.
+  // Catch these fault-readings and set them to -127.
+  if ( isnan(hin) || hin == 0 ) {
+    hin = -127;
+  }
+  if ( isnan(hout) || hout == 0 ) {
+    hout = -127;
+  }
+  
   Serial.print("{\"WeatherDuino\":[{\"probe\":1,\"temp\":"); 
   Serial.print(tin);
   Serial.print(",\"humid\":");
-  if ( isnan(hin) || hin == 0 ) {
-    Serial.print(-127.00);
-  } else {
-    Serial.print(hin);
-  }
+  Serial.print(hin);
   Serial.print("},{\"probe\":2,\"temp\":");
   Serial.print(tout);
   Serial.print(",\"humid\":");
-  if ( isnan(hout) || hout == 0 ) {
-    Serial.print(-127.00);
-  } else {
-    Serial.print(hout);
-  }
+  Serial.print(hout);
   Serial.println("}]}");
 
   // LCD line 2
   lcd.setCursor(1,1);
-  if ( tin < -99 || tin > 99 ) {
+  // Do some matching on values to get a neatly formated output
+  // on the LCD. This means including - signs and number of digits.
+  if ( tin == -127 ) {
     lcd.print("--.-");
   } else if ( tin < 10 && tin > 0 ) {
     lcd.print(" ");
@@ -101,7 +110,7 @@ void loop() {
   lcd.print(char(223));
   lcd.print("C ");
   lcd.setCursor(9,1);
-  if ( isnan(hin) || hin == 0 ) {
+  if ( hin == -127 ) {
     lcd.print("--");
   } else if ( hin < 10 ) {
     lcd.print(" ");
@@ -113,7 +122,9 @@ void loop() {
 
   // LCD Line 4
   lcd.setCursor(-3,3);
-  if ( tout < -99 || tout > 99 ) {
+  // Do some matching on values to get a neatly formated output
+  // on the LCD. This means including - signs and number of digits.
+  if ( tout == -127 ) {
     lcd.print("--.-");
   } else if ( tout < 10 && tout > 0 ) {
     lcd.print(" ");
@@ -124,7 +135,7 @@ void loop() {
   lcd.print(char(223));
   lcd.print("C ");
   lcd.setCursor(5,3);
-  if ( isnan(hout) || hout == 0 ) {
+  if ( hout == -127 ) {
     lcd.print("--");
   } else if ( hout < 10 ) {
     lcd.print(" ");
