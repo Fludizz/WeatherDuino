@@ -87,10 +87,10 @@ def ProcessRRDdata(path, rrd, name, axis_unit, inval, outval):
           "--slope-mode",
           "DEF:indoor=%s:In:AVERAGE" % rrdfile,
           "DEF:outdoor=%s:Out:AVERAGE" % rrdfile,
-          "LINE1:indoor#00FF00:Indoor\:",
-          "GPRINT:indoor:LAST:%%6.1lf%s" % unit,
-          "LINE1:outdoor#0000FF:Outdoor\:",
-          "GPRINT:outdoor:LAST:%%6.1lf%s\\r" % unit)
+          "LINE1:indoor#00FF00:In:",
+          "GPRINT:indoor:LAST:%%3.1lf%s" % unit,
+          "LINE1:outdoor#0000FF:Out:",
+          "GPRINT:outdoor:LAST:%%3.1lf%s\\r" % unit)
     else:
       # Only generate the "slower" graphs every 30m.
       if int(time.strftime('%M')) % 30 == 0:
@@ -105,18 +105,21 @@ def ProcessRRDdata(path, rrd, name, axis_unit, inval, outval):
             "DEF:outmin=%s:Out:MIN" % rrdfile,
             "DEF:inmax=%s:In:MAX" % rrdfile,
             "DEF:outmax=%s:Out:MAX" % rrdfile,
-            "LINE1:inmax#FFFF00:In Max:",
-            "GPRINT:inmax:MAX:%%6.1lf%s" % unit,
-            "LINE1:outmax#00FFFF:Out Max:",
-            "GPRINT:outmax:MAX:%%6.1lf%s\\r" % unit,
-            "LINE1:inavg#00FF00:In Cur:",
-            "GPRINT:inavg:LAST:%%6.1lf%s" % unit,
-            "LINE1:outavg#0000FF:Out Cur:",
-            "GPRINT:outavg:LAST:%%6.1lf%s\\r" % unit,
-            "LINE1:inmin#AAFF00:In Min:",
-            "GPRINT:inmin:MIN:%%6.1lf%s" % unit,
-            "LINE1:outmin#00AAFF:Out Min:",
-            "GPRINT:outmin:MIN:%%6.1lf%s\\r" % unit)
+            "COMMENT:Last Maximum\:",
+            "LINE1:inmax#FFFF00:In:",
+            "GPRINT:inmax:LAST:%%3.1lf%s" % unit,
+            "LINE1:outmax#00FFFF:Out:",
+            "GPRINT:outmax:LAST:%%3.1lf%s\\r" % unit,
+            "COMMENT:Last Avarage\:",
+            "LINE1:inavg#00FF00:In:",
+            "GPRINT:inavg:LAST:%%3.1lf%s" % unit,
+            "LINE1:outavg#0000FF:Out:",
+            "GPRINT:outavg:LAST:%%3.1lf%s\\r" % unit,
+            "COMMENT:Last Minimum\:",
+            "LINE1:inmin#AAFF00:In:",
+            "GPRINT:inmin:MIN:%%3.1lf%s" % unit,
+            "LINE1:outmin#00AAFF:Out:",
+            "GPRINT:outmin:MIN:%%3.1lf%s\\r" % unit)
 
 
 def GetWeatherDevice(device="/dev/ttyUSB0", baud=57600):
