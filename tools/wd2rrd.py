@@ -89,15 +89,13 @@ def ProcessRRDdata(path, rrd, name, axis_unit, inval, outval):
           "DEF:indoor=%s:In:AVERAGE" % rrdfile,
           "DEF:outdoor=%s:Out:AVERAGE" % rrdfile,
           "TEXTALIGN:left",
-          "COMMENT:In Current/Average\t\:",
-          "GPRINT:indoor:LAST:%%.1lf%s /" % unit,
-          "GPRINT:indoor:AVERAGE:%%.1lf%s\t" % unit,
-          "TEXTALIGN:right",
-          "LINE1:indoor#00CC00:In:",
-          "LINE1:outdoor#0000CC:Out\l:",
-          "TEXTALIGN:left",
-          "COMMENT:Out Current/Average\t\:",
-          "GPRINT:outdoor:LAST:%%.1lf%s /" % unit,
+          "LINE1:indoor#00CC00: In\::",
+          "GPRINT:indoor:LAST:%%.1lf%s\\t" % unit,
+          "COMMENT:Avg\:",
+          "GPRINT:indoor:AVERAGE:%%.1lf%s\\l" % unit,
+          "LINE1:outdoor#0000CC:Out\::",
+          "GPRINT:outdoor:LAST:%%.1lf%s\\t" % unit,
+          "COMMENT:Avg\:",
           "GPRINT:outdoor:AVERAGE:%%.1lf%s\\l" % unit)
     else:
       # Only generate the "slower" graphs every 30m.
