@@ -62,13 +62,13 @@ void setup() {
   // Start preparing the initial screen!
   lcd.clear();
   lcd.setCursor(0,0);
-  lcd.print("P0:");
-  lcd.setCursor(0,1);
   lcd.print("P1:");
-  lcd.setCursor(-4,2);
+  lcd.setCursor(0,1);
   lcd.print("P2:");
-  lcd.setCursor(-4,3);
+  lcd.setCursor(-4,2);
   lcd.print("P3:");
+  lcd.setCursor(-4,3);
+  lcd.print("P4:");
 }
 
 void loop() {
@@ -122,19 +122,19 @@ void loop() {
   }
 
   // Dump the sensor values as JSON on Serial
-  Serial.print("{\"WeatherDuino\":[{\"probe\":0,\"temp\":"); 
+  Serial.print("{\"WeatherDuino\":[{\"probe\":1,\"temp\":"); 
   Serial.print(temps[0]);
   Serial.print(",\"humid\":");
   Serial.print(hums[0]);
-  Serial.print("},{\"probe\":1,\"temp\":");
+  Serial.print("},{\"probe\":2,\"temp\":");
   Serial.print(temps[1]);
   Serial.print(",\"humid\":");
   Serial.print(hums[1]);
-  Serial.print("},{\"probe\":2,\"temp\":");
+  Serial.print("},{\"probe\":3,\"temp\":");
   Serial.print(temps[2]);
   Serial.print(",\"humid\":");
   Serial.print(hums[2]);
-  Serial.print("},{\"probe\":3,\"temp\":");
+  Serial.print("},{\"probe\":4,\"temp\":");
   Serial.print(temps[3]);
   Serial.print(",\"humid\":");
   Serial.print(hums[3]);
