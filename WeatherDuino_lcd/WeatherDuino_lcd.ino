@@ -86,7 +86,7 @@ void loop() {
       temps[0] = temp;
     }
     hum = dht0.readHumidity();
-    if ( isnan(hum) != 1 || hum != 0 ) {
+    if ( isnan(hum) != 1 && hum != 0 ) {
       hums[0] = hum;
     }
   }
@@ -96,18 +96,17 @@ void loop() {
       temps[1] = temp;
     }
     hum = dht1.readHumidity();
-    if ( isnan(hum) != 1 || hum != 0 ) {
+    if ( isnan(hum) != 1 && hum != 0 ) {
       hums[1] = hum;
     }
   }
   if ( probes[2] ) {
-    Serial.println("Probe2 true");
     temp = onewire.getTempC(Probe2);
     if ( temp != 85 ) {
       temps[2] = temp;
     }
     hum = dht2.readHumidity();
-    if ( isnan(hum) != 1 || hum != 0 ) {
+    if ( isnan(hum) != 1 && hum != 0 ) {
       hums[2] = hum;
     }
   }
@@ -117,7 +116,7 @@ void loop() {
       temps[3] = temp;
     }
     hum = dht3.readHumidity();
-    if ( isnan(hum) != 1 || hum != 0 ) {
+    if ( isnan(hum) != 1 && hum != 0 ) {
       hums[3] = hum;
     }
   }
