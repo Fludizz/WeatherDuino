@@ -9,20 +9,16 @@
 // Connect DHT pin 4 (on the right) of the sensor to GROUND
 // Connect a 10K resistor from pin 2 (data) to pin 1 (power) of the sensor
 // Note: Edit the DHT.cpp file, remove the Serial.print() lines. Those prints
-//       mess up the JSON output from the WeatherDuino
-DHT dht0(3, DHT11); // #1 is connected to Pin3 and type is dht11
-DHT dht1(4, DHT11); // #2 is connected to Pin4 and type is dht11
-DHT dht2(5, DHT11); // #3 is connected to Pin5 and type is dht11
-DHT dht3(6, DHT11); // #4 is connected to Pin6 and type is dht11
+//       mess up the Serial output from the WeatherDuino
+DHT dht[4] = 
+{
+  DHT(3, DHT11), // #1 is connected to Pin3 and type is dht11
+  DHT(4, DHT11), // #2 is connected to Pin4 and type is dht11
+  DHT(5, DHT11), // #3 is connected to Pin5 and type is dht11
+  DHT(6, DHT11)  // #4 is connected to Pin6 and type is dht11
+};
 
-  
-// LCD Panel Connections:
-// rs (LCD pin 4) to Arduino pin 13
-// rw (LCD pin 5) to Arduino pin 12
-// enable (LCD pin 6) to Arduino pin 11
-// LCD pins d4, d5, d6, d7 to Arduino pins 10, 9, 8, 7
-LiquidCrystal lcd(13, 12, 11, 10, 9, 8, 7);
-
+// OneWire DS18B20 Sensors settings
 // Data wire is plugged into port 2 on the Arduino
 // Setup a oneWire instance to communicate with any OneWire devices (not just 
 // Maxim/Dallas temperature ICs)
@@ -30,13 +26,23 @@ OneWire oneWire(2);
 
 // Pass our oneWire reference to Dallas Temperature. 
 DallasTemperature onewire(&oneWire);
-DeviceAddress Probe0 = { 0x28, 0x0B, 0x4D, 0xC6, 0x04, 0x00, 0x00, 0x4D }; 
-DeviceAddress Probe1 = { 0x28, 0x35, 0xD8, 0xC6, 0x04, 0x00, 0x00, 0xD6 };
-DeviceAddress Probe2 = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-DeviceAddress Probe3 = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+// Add all four probes to an array for easy for-loop processing!
+DeviceAddress Probe[4] = 
+{
+  { 0x28, 0x0B, 0x4D, 0xC6, 0x04, 0x00, 0x00, 0x4D }, // OneWire probe #1
+  { 0x28, 0x35, 0xD8, 0xC6, 0x04, 0x00, 0x00, 0xD6 }, // OneWire probe #2
+  { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }, // OneWire probe #3
+  { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }  // OneWire probe #4
+};
 
-// Configure which probes are attached.
-const bool probes[] = {true, true, false, false };
+
+// LCD Panel Connections:
+// rs (LCD pin 4) to Arduino pin 13
+// rw (LCD pin 5) to Arduino pin 12
+// enable (LCD pin 6) to Arduino pin 11
+// LCD pins d4, d5, d6, d7 to Arduino pins 10, 9, 8, 7
+LiquidCrystal lcd(13, 12, 11, 10, 9, 8, 7);
+
 
 void setup() {
   Serial.begin(57600); 
@@ -46,29 +52,32 @@ void setup() {
   lcd.print("WeatherDuino!");
   lcd.setCursor(0,1);
   lcd.print("v2.00");
-  lcd.setCursor(-4,2);          // Line 3 and Line 4 are off by 4 chars.
+  lcd.setCursor(0,2);          // Line 3 and Line 4 are off by -4 chars on 16x4 displays!
   lcd.print("by Fludizz");
-  lcd.setCursor(-4,3);
+  lcd.setCursor(0,3);
   lcd.print("DHT11 & DS18B20");
   delay(1000);                  // Show bootscreen for 1 second!
 
   // Start the probes
-  dht0.begin();
-  dht1.begin();
-  dht2.begin();
-  dht3.begin();
+  dht[0].begin();
+  dht[1].begin();
+  dht[2].begin();
+  dht[3].begin();
   onewire.begin();
   
   // Start preparing the initial screen!
   lcd.clear();
-  lcd.setCursor(0,0);
-  lcd.print("P1:");
-  lcd.setCursor(0,1);
-  lcd.print("P2:");
-  lcd.setCursor(-4,2);
-  lcd.print("P3:");
-  lcd.setCursor(-4,3);
-  lcd.print("P4:");
+  for ( int i = 0; i < 4; i++ ) {
+    lcd.setCursor(0,i);
+    lcd.print("Probe ");
+    lcd.print(int(i + 1));
+    lcd.print(":");
+    lcd.setCursor(14,i);
+    lcd.print(char(223));
+    lcd.print("C");
+    lcd.setCursor(19,i);
+    lcd.print("%");
+  }
 }
 
 void loop() {
@@ -79,153 +88,71 @@ void loop() {
   float hums[] = { -127, -127, -127, -127 };
   float hum;
   float temp;
-  // Read the DS18B20 and DHT11 for each configured probe.
-  if ( probes[0] ) {
-    temp = onewire.getTempC(Probe0);
+  // Read all the DS18B20 and DHT11 sensors
+  for (int i = 0; i < 4; i++) {
+    temp = onewire.getTempC(Probe[i]);
     if ( temp != 85 ) {
-      temps[0] = temp;
+      temps[i] = temp;
     }
-    hum = dht0.readHumidity();
+    hum = dht[i].readHumidity();
     if ( isnan(hum) != 1 && hum != 0 ) {
-      hums[0] = hum;
+      hums[i] = hum;
     }
   }
-  if ( probes[1] ) {
-    temp = onewire.getTempC(Probe1);
-    if ( temp != 85 ) {
-      temps[1] = temp;
-    }
-    hum = dht1.readHumidity();
-    if ( isnan(hum) != 1 && hum != 0 ) {
-      hums[1] = hum;
-    }
-  }
-  if ( probes[2] ) {
-    temp = onewire.getTempC(Probe2);
-    if ( temp != 85 ) {
-      temps[2] = temp;
-    }
-    hum = dht2.readHumidity();
-    if ( isnan(hum) != 1 && hum != 0 ) {
-      hums[2] = hum;
-    }
-  }
-  if ( probes[3] ) {
-    temp = onewire.getTempC(Probe3);
-    if ( temp != 85 ) {
-      temps[3] = temp;
-    }
-    hum = dht3.readHumidity();
-    if ( isnan(hum) != 1 && hum != 0 ) {
-      hums[3] = hum;
-    }
-  }
+  
+  /* Test value generation
+  temps[0] = random(-20, 75);
+  temps[1] = random(-20, 75);
+  temps[2] = random(-20, 75);
+  temps[3] = random(-20, 75);
+  hums[0] = random(5, 95);
+  hums[1] = random(5, 95);
+  hums[2] = random(5, 95);
+  hums[3] = random(5, 95);
+  delay(1000);
+  /* Uncomment above section for testing! */
 
   // Dump the sensor values as JSON on Serial
-  Serial.print("{\"WeatherDuino\":[{\"probe\":1,\"temp\":"); 
-  Serial.print(temps[0]);
-  Serial.print(",\"humid\":");
-  Serial.print(hums[0]);
-  Serial.print("},{\"probe\":2,\"temp\":");
-  Serial.print(temps[1]);
-  Serial.print(",\"humid\":");
-  Serial.print(hums[1]);
-  Serial.print("},{\"probe\":3,\"temp\":");
-  Serial.print(temps[2]);
-  Serial.print(",\"humid\":");
-  Serial.print(hums[2]);
-  Serial.print("},{\"probe\":4,\"temp\":");
-  Serial.print(temps[3]);
-  Serial.print(",\"humid\":");
-  Serial.print(hums[3]);
+  Serial.print("{\"WeatherDuino\":[");
+  for (int i = 0; i < 4; i++) {
+    Serial.print("{\"Probe\":");
+    Serial.print(int(i + 1));
+    Serial.print(",\"Temp\":");
+    Serial.print(temps[i]);
+    Serial.print(",\"Humid\":");
+    Serial.print(hums[i]);
+    // Max 4 probes, should not place the comma after the last probe
+    if ( i < 3 ) {
+      Serial.print("},");
+    }
+  }
+  // To reduce Serial.Print() lines in the for loop, add the last
+  // closing } for the last probe down here as well.
   Serial.println("}]}");
-
-  // LCD Line 1:
-  lcd.setCursor(4,0);
-  if ( temps[0] == -127 ) {
-    lcd.print("--.-");
-  } else if ( temps[0] < 10 && temps[0] > 0 ) {
-    lcd.print(" ");
-    lcd.print(temps[0], 1);
-  } else {
-    lcd.print(temps[0], 1);
+  
+  // Write Temperature and humidity sensor values to LCD.
+  for ( int i = 0; i < 4; i++ ) {
+    lcd.setCursor(9,i);
+    if ( temps[i] == -127 ) {
+      lcd.print(" --.-");
+    } else if ( temps[i] < 10 && temps[i] >= 0 ) {
+      lcd.print("  ");
+      lcd.print(temps[i], 1);
+    } else if ( temps[i] < -9 ) {
+      lcd.print(temps[i], 1);
+    } else {
+      lcd.print(" ");
+      lcd.print(temps[i], 1);
+    }
+    
+    lcd.setCursor(17,i);
+    if ( hums[i] == -127 ) {
+      lcd.print("--");
+    } else if ( hums[i] < 10 ) {
+      lcd.print(" ");
+      lcd.print(hums[i], 0);
+    } else {
+      lcd.print(hums[i], 0);
+    }
   }
-  lcd.print(char(223));
-  lcd.print("C ");
-  if ( hums[0] == -127 ) {
-    lcd.print("--");
-  } else if ( hums[0] < 10 ) {
-    lcd.print(" ");
-    lcd.print(hums[0], 0);
-  } else {
-    lcd.print(hums[0], 0);
-  }
-  lcd.print("%");
-
-  // LCD line 2
-  lcd.setCursor(4,1);
-  if ( temps[1] == -127 ) {
-    lcd.print("--.-");
-  } else if ( temps[1] < 10 && temps[1] > 0 ) {
-    lcd.print(" ");
-    lcd.print(temps[1], 1);
-  } else {
-    lcd.print(temps[1], 1);
-  }
-  lcd.print(char(223));
-  lcd.print("C ");
-  if ( hums[1] == -127 ) {
-    lcd.print("--");
-  } else if ( hums[1] < 10 ) {
-    lcd.print(" ");
-    lcd.print(hums[1], 0);
-  } else {
-    lcd.print(hums[1], 0);
-  }
-  lcd.print("%");
-
-  // LCD line 3 - this line starts at "-4".  
-  lcd.setCursor(0,2);
-  if ( temps[2] == -127 ) {
-    lcd.print("--.-");
-  } else if ( temps[2] < 10 && temps[2] > 0 ) {
-    lcd.print(" ");
-    lcd.print(temps[2], 1);
-  } else {
-    lcd.print(temps[2], 1);
-  }
-  lcd.print(char(223));
-  lcd.print("C ");
-  if ( hums[2] == -127 ) {
-    lcd.print("--");
-  } else if ( hums[2] < 10 ) {
-    lcd.print(" ");
-    lcd.print(hums[2], 0);
-  } else {
-    lcd.print(hums[2], 0);
-  }
-  lcd.print("%");
-
-  // LCD line 4 - this line starts at "-4".  
-  lcd.setCursor(0,3);
-  if ( temps[3] == -127 ) {
-    lcd.print("--.-");
-  } else if ( temps[3] < 10 && temps[3] > 0 ) {
-    lcd.print(" ");
-    lcd.print(temps[3], 1);
-  } else {
-    lcd.print(temps[3], 1);
-  }
-  lcd.print(char(223));
-  lcd.print("C ");
-  if ( hums[3] == -127 ) {
-    lcd.print("--");
-  } else if ( hums[3] < 10 ) {
-    lcd.print(" ");
-    lcd.print(hums[3], 0);
-  } else {
-    lcd.print(hums[3], 0);
-  }
-  lcd.print("%");
 }
-
