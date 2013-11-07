@@ -30,6 +30,7 @@ Serial Output
 =============
 
 Serial Output is JSON, the output looks like this:
+
 { "WeatherDuino": 
   [ 
     { "probe": 1, "temp": 23.12, "humid", 45.00}, 
@@ -38,4 +39,5 @@ Serial Output is JSON, the output looks like this:
     { "probe": 2, "temp": 0.24, "humid": 39.00 }
   ] 
 }
+
 All on a single line.
