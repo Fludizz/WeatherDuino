@@ -115,11 +115,11 @@ void loop() {
   // Dump the sensor values as JSON on Serial
   Serial.print("{\"WeatherDuino\":[");
   for (int i = 0; i < 4; i++) {
-    Serial.print("{\"Probe\":");
+    Serial.print("{\"probe\":");
     Serial.print(int(i + 1));
-    Serial.print(",\"Temp\":");
+    Serial.print(",\"temp\":");
     Serial.print(temps[i]);
-    Serial.print(",\"Humid\":");
+    Serial.print(",\"humid\":");
     Serial.print(hums[i]);
     // Max 4 probes, should not place the comma after the last probe
     if ( i < 3 ) {
