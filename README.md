@@ -2,18 +2,40 @@ WeatherDuino
 ============
 
 A simple weather station based on an Arduino, DHT11 and DS18B20.
-
 See http://frack.nl/wiki/WeatherDuino (Dutch) for more details on the project.
+
 
 DHT11 Library
 =============
 
+Get it here: https://github.com/adafruit/DHT-sensor-library
 This project uses the generic DHT11 library, however for the JSON output to work
 on the serial line, the DHT.cpp file must be editted to remove the lines 
 containing "Serial.print()"
+
+OneWire Library
+===============
+
+Get it here: http://www.pjrc.com/teensy/td_libs_OneWire.html
+This OneWire library can be used without modifications.
+
+DallasTemperature Library
+=========================
+
+Get it here: https://github.com/milesburton/Arduino-Temperature-Control-Library
+This DallasTemperature library can be used without modifications.
+
 
 Serial Output
 =============
 
 Serial Output is JSON, the output looks like this:
-{ "WeatherDuino": [ { "probe": 1, "temp": 23, "humid", 45}, { "probe": 2, "temp": 15, "humid": 74 } ] }
+{ "WeatherDuino": 
+  [ 
+    { "probe": 1, "temp": 23.12, "humid", 45.00}, 
+    { "probe": 2, "temp": 15.24, "humid": 73.00 }, 
+    { "probe": 3, "temp": -10.20, "humid": 20.00 },
+    { "probe": 2, "temp": 0.24, "humid": 39.00 }
+  ] 
+}
+All on a single line.
