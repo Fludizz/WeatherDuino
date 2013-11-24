@@ -210,10 +210,9 @@ def ContinualRRDwrite(config):
     newtime = int(time.strftime('%M'))
     if not newtime == oldtime and newtime % 5 == 0:
       oldtime = newtime
-      ProcessRRDdata(fdestination, temprrd, "Temp", u"\u00B0C".encode('utf8'), 
-                     intemp, outtemp)
-      ProcessRRDdata(fdestination, humidrrd, "Humid", u"%".encode('utf8'), 
-                     inhum, outhum)
+      ProcessRRDdata(path, temprrd, "%s_temp" % prefix, 
+                     u"\u00B0C".encode('utf8'))
+      ProcessRRDdata(path, humidrrd, "%s_humid" % prefix, u"%".encode('utf8'))
 
 
 if __name__ == '__main__':
