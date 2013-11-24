@@ -70,7 +70,7 @@ def ProcessRRDdata(path, rrd, prefix, name, axis_unit):
   always generate a new daily graph on each run. However, it will only create
   the weekly/monthly/yearly graphs once every half their avaraging-time. '''
   rrdfile = os.path.abspath("%s/%s" % (path, rrd))
-  imgname = os.path.abspath("%s/%s_%s" % (path, name))
+  imgname = os.path.abspath("%s/%s_%s" % (path, prefix, name))
   # Dirty fix for the escaping mismatch... RRDtool uses the % sign in *some*
   # parameters as the escaping character but not in the axis unit. This cause
   # the escape value to break the rrd graph generation. If the unit is %, make
