@@ -118,27 +118,27 @@ def ProcessRRDdata(path, rrd, prefix, name, axis_unit):
           "DEF:P4max=%s:P4:MAX" % rrdfile,
           "TEXTALIGN:left",
           # Using whitespaces to align everything. Tabs behave unpredictable!
-          "COMMENT:              Cur        Max       Avg       Min\\l",
+          "COMMENT:Cur       Max       Avg       Min  \\r",
           "LINE1:P1avg#00CC00:Probe1\::",
           "GPRINT:P1avg:LAST:%%6.1lf%s" % unit,
           "GPRINT:P1max:MAX:%%6.1lf%s" % unit,
           "GPRINT:P1avg:AVERAGE:%%6.1lf%s" % unit,
-          "GPRINT:P1min:MIN:%%6.1lf%s\\l" % unit,
+          "GPRINT:P1min:MIN:%%6.1lf%s\\r" % unit,
           "LINE1:P2avg#FF9900:Probe2\::",
           "GPRINT:P2avg:LAST:%%6.1lf%s" % unit,
           "GPRINT:P2max:MAX:%%6.1lf%s" % unit,
           "GPRINT:P2avg:AVERAGE:%%6.1lf%s" % unit,
-          "GPRINT:P2min:MIN:%%6.1lf%s\\l" % unit,
+          "GPRINT:P2min:MIN:%%6.1lf%s\\r" % unit,
           "LINE1:P3avg#9900FF:Probe3\::",
           "GPRINT:P3avg:LAST:%%6.1lf%s" % unit,
           "GPRINT:P3max:MAX:%%6.1lf%s" % unit,
           "GPRINT:P3avg:AVERAGE:%%6.1lf%s" % unit,
-          "GPRINT:P3min:MIN:%%6.1lf%s\\l" % unit,
+          "GPRINT:P3min:MIN:%%6.1lf%s\\r" % unit,
           "LINE1:P4avg#0000CC:Probe4\::",
           "GPRINT:P4avg:LAST:%%6.1lf%s" % unit,
           "GPRINT:P4max:MAX:%%6.1lf%s" % unit,
           "GPRINT:P4avg:AVERAGE:%%6.1lf%s" % unit,
-          "GPRINT:P4min:MIN:%%6.1lf%s\\l" % unit)
+          "GPRINT:P4min:MIN:%%6.1lf%s\\r" % unit)
 
 
 def GetWeatherDevice(device="/dev/ttyUSB0", baud=57600):
