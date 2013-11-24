@@ -176,8 +176,8 @@ def ContinualRRDwrite(config):
 
   # Make an empty list with NUM devices (where NUM is in config).
   # In theses lists, probe is position + 1 (e.g. temps[0] is probe 1).
-  temps = [ None ] * config['device']['num']
-  hums = [ None ] * config['device']['num']
+  temps = [ None ] * int(config['device']['num'])
+  hums = [ None ] * int(config['device']['num'])
   while True:
     try:
       data = json.loads(arduino.readline().strip())['WeatherDuino']
@@ -189,7 +189,7 @@ def ContinualRRDwrite(config):
     # constant reading is required because otherwise the serial device times out
     for items in data:
       try:
-        if items['probe'] <= config['device']['num']:
+        if items['probe'] <= int(config['device']['num']):
           # Probes are numberd 1 through 4, need to adjust to match the list!
           pos = items['probe'] - 1
           temps[pos] = items['temp']
