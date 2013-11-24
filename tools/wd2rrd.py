@@ -121,7 +121,7 @@ def ProcessRRDdata(path, rrd, prefix, name, axis_unit):
           "GPRINT:P1max:MAX:Max\: %%.1lf%s\\t" % unit,
           "GPRINT:P1avg:AVERAGE:Avg\: %%.1lf%s\\t" % unit,
           "GPRINT:P1min:MIN:Min\: %%.1lf%s\\l" % unit,
-          "LINE1:P2avg#CCCC00:Probe2\::",
+          "LINE1:P2avg#FF9900:Probe2\::",
           "GPRINT:P2avg:LAST:%%.1lf%s\\t" % unit,
           "GPRINT:P2max:MAX:Max\: %%.1lf%s\\t" % unit,
           "GPRINT:P2avg:AVERAGE:Avg\: %%.1lf%s\\t" % unit,
