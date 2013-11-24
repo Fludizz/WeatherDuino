@@ -62,7 +62,7 @@ def UpdateRRDfile(path, rrd, val, defs=DEFRRD):
     print "INFO: RRD file %s does not exist. Creating a new RRD file." % rrdfile
     rrdtool.create(rrdfile, defs)
   # update the data in the rrdfile:
-  rrdtool.update(rrdfile, "N:" % ":".join(map(str, val)))
+  rrdtool.update(rrdfile, "N:%s" % ":".join(map(str, val)))
 
 
 def ProcessRRDdata(path, rrd, name, axis_unit):
