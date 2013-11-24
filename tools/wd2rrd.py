@@ -12,13 +12,14 @@ __version__ = '0.2'
 import rrdtool
 import sys
 import optparse
+import ConfigParser
 import os
 import serial
 import time
 try:
-    import json
-except ImportError:
     import simplejson as json
+except ImportError:
+    import json
 
 
 # MRTG uses:
@@ -27,8 +28,10 @@ except ImportError:
 # 1 year graphs with 1 day avarage: 288 steps / 800 rows
 # Extracted from mrtg generated RRD file using 'rrdtool info <rrdfile>'.
 # Assuming MRTG knows what it's doing, we assume the same values.
-DEFRRD = [ "DS:In:GAUGE:600:-100:100",
-           "DS:Out:GAUGE:600:-100:100",
+DEFRRD = [ "DS:P1:GAUGE:600:-100:100",
+           "DS:P2:GAUGE:600:-100:100",
+           "DS:P3:GAUGE:600:-100:100",
+           "DS:P4:GAUGE:600:-100:100",
            "RRA:AVERAGE:0.5:1:800",
            "RRA:AVERAGE:0.5:6:800",
            "RRA:AVERAGE:0.5:24:800",
@@ -47,88 +50,92 @@ TIMEDELTA = {"day": "-86400",
              "year": "-31536000" }
 
 
-def UpdateRRDfile(path, rrd, inval, outval, defs=DEFRRD):
+def UpdateRRDfile(path, rrd, val, defs=DEFRRD):
   ''' This function only writes collected data to the RRD File but does NOT 
   write new images. This increases the data detail for the daily graphs. This
   does not need to be called more often however due to the Humidity probes being
   relativly inaccurate (only whole percents at a time), this causes a smoother
   graph for the humidity data. '''
-  if not path:
-    path = '.'
-  rrdfile = "%s/%s" % (path, rrd)
+  rrdfile = os.path.abspath("%s/%s" % (path, rrd))
   # Check if the rrdfile exists and create if needed.
   if not os.path.isfile(rrdfile):
     print "INFO: RRD file %s does not exist. Creating a new RRD file." % rrdfile
     rrdtool.create(rrdfile, defs)
   # update the data in the rrdfile:
-  rrdtool.update(rrdfile, "N:%s:%s" % (inval, outval))
+  rrdtool.update(rrdfile, "N:" % ":".join(map(str, val)))
 
 
-def ProcessRRDdata(path, rrd, name, axis_unit, inval, outval):
+def ProcessRRDdata(path, rrd, name, axis_unit):
   ''' This function updates the graphs using the RRDfile at path/rrd. It will
   always generate a new daily graph on each run. However, it will only create
-  the weekly/monthly/yearly graphs once every 30 minutes. '''
-  if not path:
-    path = "."
-  rrdfile = "%s/%s" % (path, rrd)
-  imgname = "%s/%s" % (path, name)
+  the weekly/monthly/yearly graphs once every half their avaraging-time. '''
+  rrdfile = os.path.abspath("%s/%s" % (path, rrd))
+  imgname = os.path.abspath("%s/%s" % (path, name))
   # Dirty fix for the escaping mismatch... RRDtool uses the % sign in *some*
   # parameters as the escaping character but not in the axis unit. This cause
   # the escape value to break the rrd graph generation. If the unit is %, make
   # it an escaped % sign ('%%') and don't do this for the axis.
   unit = axis_unit.replace('%', '%%')
+
   # Generate graphs for each configured Delta in TIMEDELTA:
   for delta in TIMEDELTA.keys():
-    if delta == "day":
+    # All graphs for different timedelta's are generate at different minutes to
+    # reduce the CPU overhead while generating the images. Usefull for low power
+    # devices like a Raspberry Pi.
+    if delta == "day" and int(time.strftime("%M")) % 5 == 0:
+      # Generate the daily graphs every 5 minutes.
+      gen_graph = True
+    elif delta == "week" and int(time.strftime("%M")) in (5, 20, 35, 50):
+      # Generate the Weekly graph every 15 minutes (at minutes 5, 20, 35 and 50)
+      gen_graph = True
+    elif delta == "month" and int(time.strftime("%M")) == 55:
+      # Generate the Monthly graphs once every hour (at minute 55).
+      gen_graph = True
+    elif delta == "year" and int(time.strftime("%H")) in (0, 12):
+      # Generate the yearly graphs once every 12 hours (at 12:00 and 0:00).
+      gen_graph = True
+    else:
+      gen_graph = False
+    if gen_graph:
       rrdtool.graph(
           "%s-%s.png" % (imgname, delta), 
           "--start", TIMEDELTA[delta],
           "--vertical-label=%s (%s)" % (name, axis_unit),
           "--slope-mode",
           "--font", "LEGEND:7",
-          "DEF:indoor=%s:In:AVERAGE" % rrdfile,
-          "DEF:outdoor=%s:Out:AVERAGE" % rrdfile,
+          "DEF:P1avg=%s:P1:AVERAGE" % rrdfile,
+          "DEF:P2avg=%s:P2:AVERAGE" % rrdfile,
+          "DEF:P3avg=%s:P3:AVERAGE" % rrdfile,
+          "DEF:P4avg=%s:P4:AVERAGE" % rrdfile,
+          "DEF:P1min=%s:P1:MIN" % rrdfile,
+          "DEF:P2min=%s:P2:MIN" % rrdfile,
+          "DEF:P3min=%s:P3:MIN" % rrdfile,
+          "DEF:P4min=%s:P4:MIN" % rrdfile,
+          "DEF:P1max=%s:P1:MAX" % rrdfile,
+          "DEF:P2max=%s:P2:MAX" % rrdfile,
+          "DEF:P3max=%s:P3:MAX" % rrdfile,
+          "DEF:P4max=%s:P4:MAX" % rrdfile,
           "TEXTALIGN:left",
-          "LINE1:indoor#00CC00: In\::",
-          "GPRINT:indoor:LAST:%%.1lf%s\\t" % unit,
-          "COMMENT:Avg\:",
-          "GPRINT:indoor:AVERAGE:%%.1lf%s\\l" % unit,
-          "LINE1:outdoor#0000CC:Out\::",
-          "GPRINT:outdoor:LAST:%%.1lf%s\\t" % unit,
-          "COMMENT:Avg\:",
-          "GPRINT:outdoor:AVERAGE:%%.1lf%s\\l" % unit)
-    else:
-      # Only generate the "slower" graphs every 30m.
-      if int(time.strftime('%M')) % 30 == 0:
-        rrdtool.graph(
-            "%s-%s.png" % (imgname, delta), 
-            "--start", TIMEDELTA[delta],
-            "--vertical-label=%s (%s)" % (name, axis_unit),
-            "--slope-mode",
-            "--font", "LEGEND:7",
-            "DEF:inavg=%s:In:AVERAGE" % rrdfile,
-            "DEF:outavg=%s:Out:AVERAGE" % rrdfile,
-            "DEF:inmin=%s:In:MIN" % rrdfile,
-            "DEF:outmin=%s:Out:MIN" % rrdfile,
-            "DEF:inmax=%s:In:MAX" % rrdfile,
-            "DEF:outmax=%s:Out:MAX" % rrdfile,
-            "TEXTALIGN:left",
-            "COMMENT: In\:",
-            "GPRINT:inavg:LAST:%%.1lf%s\\t" % unit,
-            "LINE0.5:inmax#88CC00:Max\::",
-            "GPRINT:inmax:MAX:%%.1lf%s" % unit,
-            "LINE1:inavg#00CC00:Avg\::",
-            "GPRINT:inavg:AVERAGE:%%.1lf%s" % unit,
-            "LINE0.5:inmin#80CC80:Min\::",
-            "GPRINT:inmin:MIN:%%.1lf%s\\l" % unit,    
-            "COMMENT:Out\:",
-            "GPRINT:outavg:LAST:%%.1lf%s\\t" % unit,
-            "LINE0.5:outmax#8080CC:Max\::",
-            "GPRINT:outmax:MAX:%%.1lf%s" % unit,
-            "LINE1:outavg#0000CC:Avg\::",        
-            "GPRINT:outavg:AVERAGE:%%.1lf%s" % unit,
-            "LINE0.5:outmin#404080:Min\::",    
-            "GPRINT:outmin:MIN:%%.1lf%s\\l" % unit)
+          "LINE1:P1avg#00CC00:Probe1\::",
+          "GPRINT:P1avg:LAST:%%.1lf%s\\t" % unit,
+          "GPRINT:P1max:MAX:Max\: %%.1lf%s\\t" % unit,
+          "GPRINT:P1avg:AVERAGE:Avg\: %%.1lf%s\\t" % unit,
+          "GPRINT:P1min:MIN:Min\: %%.1lf%s)\\l" % unit,
+          "LINE1:P2avg#CCCC00:Probe2\::",
+          "GPRINT:P2avg:LAST:%%.1lf%s\\t" % unit,
+          "GPRINT:P2max:MAX:Max\: %%.1lf%s\\t" % unit,
+          "GPRINT:P2avg:AVERAGE:Avg\: %%.1lf%s\\t" % unit,
+          "GPRINT:P2min:MIN:Min\: %%.1lf%s\\l" % unit,
+          "LINE1:P3avg#6600CC:Probe3\::",
+          "GPRINT:P3avg:LAST:%%.1lf%s\\t" % unit,
+          "GPRINT:P3max:MAX:Max\: %%.1lf%s\\t" % unit,
+          "GPRINT:P3avg:AVERAGE:Avg\: %%.1lf%s\\t" % unit,
+          "GPRINT:P3min:MIN:Min\: %%.1lf%s\\l" % unit,
+          "LINE1:P4avg#0000CC:Probe4\::",
+          "GPRINT:P4avg:LAST:%%.1lf%s\\t" % unit,
+          "GPRINT:P4max:MAX:Max\: %%.1lf%s\\t" % unit,
+          "GPRINT:P4avg:AVERAGE:Avg\: %%.1lf%s\\t" % unit,
+          "GPRINT:P4min:MIN:Min\: %%.1lf%s)\\l" % unit)
 
 
 def GetWeatherDevice(device="/dev/ttyUSB0", baud=57600):
@@ -147,42 +154,58 @@ def GetWeatherDevice(device="/dev/ttyUSB0", baud=57600):
     raise Exception('Device %s (%sbps) is not a WeatherDuino!' % (device, baud))
 
 
-def ContinualRRDwrite(device, baud, fdestination, fprefix):
+def ContinualRRDwrite(config):
   ''' Open the WeatherDuino device, run an endless loop for collecting and 
   writing weather data. '''
-  if not fdestination:
-    fdestination = "."
-  if not os.path.exists(fdestination):
-    raise Exception('Destination path \'%s\' does not exist.' % fdestination)
-  print "Writing weatherdata to files '%s/%s*'" % (fdestination,fprefix)
-  humidrrd = "%s_humid.rrd" % fprefix
-  temprrd = "%s_temp.rrd" % fprefix
+  if config["files"]["path"].startswith("~"):
+    path = os.path.expanduser(config["files"]["path"])
+  else:
+    path = os.path.abspath(config["files"]["path"])
+  if not os.path.exists(path):
+    raise Exception('Destination path \'%s\' does not exist.' % path)
+  prefix = config["files"]["prefix"]
+  print "Writing weatherdata to files '%s/%s*'" % (path, prefix)
+  humidrrd = "%s_humid.rrd" % prefix
+  temprrd = "%s_temp.rrd" % prefix
+
   oldtime = None
   # Initialize the WeatherDuino!
-  arduino = GetWeatherDevice(device, baud)
+  arduino = GetWeatherDevice(config["device"]["port"], config["device"]["baud"])
   # clear any potential junk from the buffer
   arduino.readline()
+
+  # Make an empty list with NUM devices (where NUM is in config).
+  # In theses lists, probe is position + 1 (e.g. temps[0] is probe 1).
+  temps = [ None ] * config['device']['num']
+  hums = [ None ] * config['device']['num']
   while True:
     try:
-      data = arduino.readline().strip()
+      data = json.loads(arduino.readline().strip())['WeatherDuino']
     except serial.serialutil.SerialException, err:
       print "[%s] Error: %s" % (time.ctime(), err)
       sys.exit(1)
       pass
     # Only process the data once per 5 minutes but keep reading the buffer. This
     # constant reading is required because otherwise the serial device times out
-    for items in json.loads(data)['WeatherDuino']:
-      if items['probe'] == 1:
-        intemp, inhum = items['temp'], items['humid']
-      elif items['probe'] == 2:
-        outtemp, outhum = items['temp'], items['humid']
-      else:
-        print "Ignoring probe with ID %i" % items['probe']
-    print "[%s] Probe 1: T%s H%s; Probe 2: T%s H%s" % (time.ctime(), intemp, 
-                                                       inhum, outtemp, outhum)
+    for items in data:
+      try:
+        if items['probe'] <= config['device']['num']:
+          # Probes are numberd 1 through 4, need to adjust to match the list!
+          pos = items['probe'] - 1
+          temps[pos] = items['temp']
+          hums[pos] = items['humid']
+          print "[%s] Probe %s: T%s H%s;" % (time.ctime(), items['probe'],
+                                             temps[pos], hums[pos])
+        else:
+          print "Ignoring unconfigured probe with ID '%s'" % items['probe']
+      except KeyError, err:
+        print "Ignoring invalid key %s" % err
+        pass
+
     # Update RRDfile regardless of the graphs/time
-    UpdateRRDfile(fdestination, temprrd, intemp, outtemp)
-    UpdateRRDfile(fdestination, humidrrd, inhum, outhum)
+    UpdateRRDfile(path, temprrd, temps)
+    UpdateRRDfile(path, humidrrd, hums)
+
     # every 5 minutes, generate graphs:
     newtime = int(time.strftime('%M'))
     if not newtime == oldtime and newtime % 5 == 0:
@@ -196,13 +219,18 @@ def ContinualRRDwrite(device, baud, fdestination, fprefix):
 if __name__ == '__main__':
   usage = "usage: %prog [options]"
   parser = optparse.OptionParser(usage=usage)
+  parser.add_option("-c", "--conf", metavar="CONF", default=None,
+                    help="""Specify configfile to use. Note: When using a config
+                     file, all other options are ignored.""")
   parser.add_option("-d", "--device", metavar="DEVICE", default="/dev/ttyUSB0",
                     help="The serial device the Arduino is connected to.")
   parser.add_option("-b", "--baud", metavar="BAUD", default=57600, type="int",
                     help="Baudrate at which the Arduino is communicating.")
+  parser.add_option("-n", "--num", metavar="NUM", default=4, type="int",
+                    help="Number of probes connected to WeatherDuino")
   parser.add_option("-p", "--path", metavar="PATH", default=".",
                     help="Destination path where the RRD & graphs are written")
-  parser.add_option("-f", "--file", metavar="FILE", default="WeatherDuino",
+  parser.add_option("-x", "--prefix", metavar="PREFIX", default="WeatherDuino",
                     help="Filename prefix for the RRD files.")
   (opts, args) = parser.parse_args()
   try:
@@ -211,4 +239,31 @@ if __name__ == '__main__':
     sys.exit(1)
   except IndexError:
     pass
-  ContinualRRDwrite(opts.device, opts.baud, opts.path, opts.file)
+# store the received options in config dictionary
+  config = { "device": { "port": opts.device,
+                         "baud": opts.baud,
+                         "num": opts.num },
+             "files": { "path": opts.path,
+                        "prefix": opts.prefix } }
+# Check for config file and overwrite the config using this file.
+  if opts.conf:
+    # Some basic path expansion
+    if opts.conf.startswith("~"):
+      conffile = os.path.expanduser(opts.conf)
+    else:
+      conffile = os.path.abspath(opts.conf)
+    # Check if the expanded config file is there and parse it!
+    if os.path.isfile(conffile):
+      parser = ConfigParser.RawConfigParser()
+      parser.read(conffile)
+      config = dict((section, dict(parser.items(section)))
+                    for section in parser.sections())
+      print "Using configfile '%s' - Ignoring all other arguments." % conffile
+    else:
+      print "Configfile '%s' not found or not accessible!" % conffile
+      sys.exit(1)
+
+  print "Using '%s' ('%s' baud) with %s Probes..." % (config['device']['port'],
+                                                      config['device']['baud'],
+                                                      config['device']['num'])
+  ContinualRRDwrite(config)
