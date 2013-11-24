@@ -71,12 +71,13 @@ def ProcessRRDdata(path, rrd, prefix, name, axis_unit):
   the weekly/monthly/yearly graphs once every half their avaraging-time. '''
   rrdfile = os.path.abspath("%s/%s" % (path, rrd))
   imgname = os.path.abspath("%s/%s_%s" % (path, prefix, name))
+
   # Dirty fix for the escaping mismatch... RRDtool uses the % sign in *some*
   # parameters as the escaping character but not in the axis unit. This cause
   # the escape value to break the rrd graph generation. If the unit is %, make
   # it an escaped % sign ('%%') and don't do this for the axis.
-  unit = axis_unit.replace('%', '%%')
-
+  # Also include a space for the % sign, to fix the legend layout.
+  unit = axis_unit.replace('%', '%% ')
   # Generate graphs for each configured Delta in TIMEDELTA:
   for delta in TIMEDELTA.keys():
     # All graphs for different timedelta's are generate at different minutes to
@@ -98,11 +99,11 @@ def ProcessRRDdata(path, rrd, prefix, name, axis_unit):
       gen_graph = False
     if gen_graph:
       rrdtool.graph(
-          "%s-%s.png" % (imgname, delta), 
+          "%s-%s.png" % (imgname, delta),
           "--start", TIMEDELTA[delta],
           "--vertical-label=%s (%s)" % (name, axis_unit),
           "--slope-mode",
-          "--font", "LEGEND:7",
+          "--font", "LEGEND:7:mono",
           "DEF:P1avg=%s:P1:AVERAGE" % rrdfile,
           "DEF:P2avg=%s:P2:AVERAGE" % rrdfile,
           "DEF:P3avg=%s:P3:AVERAGE" % rrdfile,
@@ -116,26 +117,28 @@ def ProcessRRDdata(path, rrd, prefix, name, axis_unit):
           "DEF:P3max=%s:P3:MAX" % rrdfile,
           "DEF:P4max=%s:P4:MAX" % rrdfile,
           "TEXTALIGN:left",
+          # Using whitespaces to align everything. Tabs behave unpredictable!
+          "COMMENT:              Cur        Max       Avg       Min\\l",
           "LINE1:P1avg#00CC00:Probe1\::",
-          "GPRINT:P1avg:LAST:%%.1lf%s\\t" % unit,
-          "GPRINT:P1max:MAX:Max\: %%.1lf%s\\t" % unit,
-          "GPRINT:P1avg:AVERAGE:Avg\: %%.1lf%s\\t" % unit,
-          "GPRINT:P1min:MIN:Min\: %%.1lf%s\\l" % unit,
+          "GPRINT:P1avg:LAST:%%6.1lf%s" % unit,
+          "GPRINT:P1max:MAX:%%6.1lf%s" % unit,
+          "GPRINT:P1avg:AVERAGE:%%6.1lf%s" % unit,
+          "GPRINT:P1min:MIN:%%6.1lf%s\\l" % unit,
           "LINE1:P2avg#FF9900:Probe2\::",
-          "GPRINT:P2avg:LAST:%%.1lf%s\\t" % unit,
-          "GPRINT:P2max:MAX:Max\: %%.1lf%s\\t" % unit,
-          "GPRINT:P2avg:AVERAGE:Avg\: %%.1lf%s\\t" % unit,
-          "GPRINT:P2min:MIN:Min\: %%.1lf%s\\l" % unit,
+          "GPRINT:P2avg:LAST:%%6.1lf%s" % unit,
+          "GPRINT:P2max:MAX:%%6.1lf%s" % unit,
+          "GPRINT:P2avg:AVERAGE:%%6.1lf%s" % unit,
+          "GPRINT:P2min:MIN:%%6.1lf%s\\l" % unit,
           "LINE1:P3avg#9900FF:Probe3\::",
-          "GPRINT:P3avg:LAST:%%.1lf%s\\t" % unit,
-          "GPRINT:P3max:MAX:Max\: %%.1lf%s\\t" % unit,
-          "GPRINT:P3avg:AVERAGE:Avg\: %%.1lf%s\\t" % unit,
-          "GPRINT:P3min:MIN:Min\: %%.1lf%s\\l" % unit,
+          "GPRINT:P3avg:LAST:%%6.1lf%s" % unit,
+          "GPRINT:P3max:MAX:%%6.1lf%s" % unit,
+          "GPRINT:P3avg:AVERAGE:%%6.1lf%s" % unit,
+          "GPRINT:P3min:MIN:%%6.1lf%s\\l" % unit,
           "LINE1:P4avg#0000CC:Probe4\::",
-          "GPRINT:P4avg:LAST:%%.1lf%s\\t" % unit,
-          "GPRINT:P4max:MAX:Max\: %%.1lf%s\\t" % unit,
-          "GPRINT:P4avg:AVERAGE:Avg\: %%.1lf%s\\t" % unit,
-          "GPRINT:P4min:MIN:Min\: %%.1lf%s\\l" % unit)
+          "GPRINT:P4avg:LAST:%%6.1lf%s" % unit,
+          "GPRINT:P4max:MAX:%%6.1lf%s" % unit,
+          "GPRINT:P4avg:AVERAGE:%%6.1lf%s" % unit,
+          "GPRINT:P4min:MIN:%%6.1lf%s\\l" % unit)
 
 
 def GetWeatherDevice(device="/dev/ttyUSB0", baud=57600):
@@ -164,7 +167,7 @@ def ContinualRRDwrite(config):
   if not os.path.exists(path):
     raise Exception('Destination path \'%s\' does not exist.' % path)
   prefix = config["files"]["prefix"]
-  print "Writing weatherdata to files '%s/%s*'" % (path, prefix)
+  print "Writing sensor data to files '%s/%s*'" % (path, prefix)
   humidrrd = "%s_humid.rrd" % prefix
   temprrd = "%s_temp.rrd" % prefix
 
@@ -260,8 +263,4 @@ if __name__ == '__main__':
     else:
       print "Configfile '%s' not found or not accessible!" % conffile
       sys.exit(1)
-
-  print "Using '%s' ('%s' baud) with %s Probes..." % (config['device']['port'],
-                                                      config['device']['baud'],
-                                                      config['device']['num'])
   ContinualRRDwrite(config)
