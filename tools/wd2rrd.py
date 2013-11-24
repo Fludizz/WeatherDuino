@@ -65,12 +65,12 @@ def UpdateRRDfile(path, rrd, val, defs=DEFRRD):
   rrdtool.update(rrdfile, "N:%s" % ":".join(map(str, val)))
 
 
-def ProcessRRDdata(path, rrd, name, axis_unit):
+def ProcessRRDdata(path, rrd, prefix, name, axis_unit):
   ''' This function updates the graphs using the RRDfile at path/rrd. It will
   always generate a new daily graph on each run. However, it will only create
   the weekly/monthly/yearly graphs once every half their avaraging-time. '''
   rrdfile = os.path.abspath("%s/%s" % (path, rrd))
-  imgname = os.path.abspath("%s/%s" % (path, name))
+  imgname = os.path.abspath("%s/%s_%s" % (path, name))
   # Dirty fix for the escaping mismatch... RRDtool uses the % sign in *some*
   # parameters as the escaping character but not in the axis unit. This cause
   # the escape value to break the rrd graph generation. If the unit is %, make
@@ -120,13 +120,13 @@ def ProcessRRDdata(path, rrd, name, axis_unit):
           "GPRINT:P1avg:LAST:%%.1lf%s\\t" % unit,
           "GPRINT:P1max:MAX:Max\: %%.1lf%s\\t" % unit,
           "GPRINT:P1avg:AVERAGE:Avg\: %%.1lf%s\\t" % unit,
-          "GPRINT:P1min:MIN:Min\: %%.1lf%s)\\l" % unit,
+          "GPRINT:P1min:MIN:Min\: %%.1lf%s\\l" % unit,
           "LINE1:P2avg#CCCC00:Probe2\::",
           "GPRINT:P2avg:LAST:%%.1lf%s\\t" % unit,
           "GPRINT:P2max:MAX:Max\: %%.1lf%s\\t" % unit,
           "GPRINT:P2avg:AVERAGE:Avg\: %%.1lf%s\\t" % unit,
           "GPRINT:P2min:MIN:Min\: %%.1lf%s\\l" % unit,
-          "LINE1:P3avg#6600CC:Probe3\::",
+          "LINE1:P3avg#9900FF:Probe3\::",
           "GPRINT:P3avg:LAST:%%.1lf%s\\t" % unit,
           "GPRINT:P3max:MAX:Max\: %%.1lf%s\\t" % unit,
           "GPRINT:P3avg:AVERAGE:Avg\: %%.1lf%s\\t" % unit,
@@ -135,7 +135,7 @@ def ProcessRRDdata(path, rrd, name, axis_unit):
           "GPRINT:P4avg:LAST:%%.1lf%s\\t" % unit,
           "GPRINT:P4max:MAX:Max\: %%.1lf%s\\t" % unit,
           "GPRINT:P4avg:AVERAGE:Avg\: %%.1lf%s\\t" % unit,
-          "GPRINT:P4min:MIN:Min\: %%.1lf%s)\\l" % unit)
+          "GPRINT:P4min:MIN:Min\: %%.1lf%s\\l" % unit)
 
 
 def GetWeatherDevice(device="/dev/ttyUSB0", baud=57600):
@@ -210,9 +210,8 @@ def ContinualRRDwrite(config):
     newtime = int(time.strftime('%M'))
     if not newtime == oldtime and newtime % 5 == 0:
       oldtime = newtime
-      ProcessRRDdata(path, temprrd, "%s_temp" % prefix, 
-                     u"\u00B0C".encode('utf8'))
-      ProcessRRDdata(path, humidrrd, "%s_humid" % prefix, u"%".encode('utf8'))
+      ProcessRRDdata(path, temprrd, prefix, "temp", u"\u00B0C".encode('utf8'))
+      ProcessRRDdata(path, humidrrd, prefix, "humid", u"%".encode('utf8'))
 
 
 if __name__ == '__main__':
