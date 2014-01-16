@@ -12,8 +12,8 @@
 //       mess up the Serial output from the WeatherDuino
 DHT dht[4] = 
 {
-  DHT(3, DHT11), // #1 is connected to Pin3 and type is dht11
-  DHT(4, DHT11), // #2 is connected to Pin4 and type is dht11
+  DHT(3, DHT22), // #1 is connected to Pin3 and type is dht11
+  DHT(4, DHT22), // #2 is connected to Pin4 and type is dht11
   DHT(5, DHT11), // #3 is connected to Pin5 and type is dht11
   DHT(6, DHT11)  // #4 is connected to Pin6 and type is dht11
 };
@@ -31,8 +31,8 @@ DeviceAddress Probe[4] =
 {
   { 0x28, 0x0B, 0x4D, 0xC6, 0x04, 0x00, 0x00, 0x4D }, // OneWire probe #1
   { 0x28, 0x35, 0xD8, 0xC6, 0x04, 0x00, 0x00, 0xD6 }, // OneWire probe #2
-  { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }, // OneWire probe #3
-  { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }  // OneWire probe #4
+  { 0x28, 0x04, 0xC1, 0x1A, 0x05, 0x00, 0x00, 0x3B }, // OneWire probe #3
+  { 0x28, 0xF5, 0xD5, 0x1A, 0x05, 0x00, 0x00, 0x1D }  // OneWire probe #4
 };
 
 
