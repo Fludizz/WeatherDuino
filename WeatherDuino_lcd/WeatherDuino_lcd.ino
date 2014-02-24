@@ -12,8 +12,8 @@
 //       mess up the Serial output from the WeatherDuino
 DHT dht[4] = 
 {
-  DHT(3, DHT22), // #1 is connected to Pin3 and type is dht11
-  DHT(4, DHT22), // #2 is connected to Pin4 and type is dht11
+  DHT(3, DHT22), // #1 is connected to Pin3 and type is dht22
+  DHT(4, DHT22), // #2 is connected to Pin4 and type is dht22
   DHT(5, DHT11), // #3 is connected to Pin5 and type is dht11
   DHT(6, DHT11)  // #4 is connected to Pin6 and type is dht11
 };
@@ -51,11 +51,11 @@ void setup() {
   lcd.setCursor(0,0);           // set cursor to column 0, row 0 (the first row)
   lcd.print("WeatherDuino!");
   lcd.setCursor(0,1);
-  lcd.print("v2.00");
+  lcd.print("v2.01");
   lcd.setCursor(0,2);          // Line 3 and Line 4 are off by -4 chars on 16x4 displays!
   lcd.print("by Fludizz");
   lcd.setCursor(0,3);
-  lcd.print("DHT11 & DS18B20");
+  lcd.print("DHTxx & DS18B20");
   delay(1000);                  // Show bootscreen for 1 second!
 
   // Start the probes
@@ -151,8 +151,10 @@ void loop() {
     } else if ( hums[i] < 10 ) {
       lcd.print(" ");
       lcd.print(hums[i], 0);
+    } else if ( hums[i] >= 99 ) {
+      lcd.print("99");
     } else {
-      lcd.print(hums[i], 0);
+      lcd.print(hums[i],0);
     }
   }
 }
