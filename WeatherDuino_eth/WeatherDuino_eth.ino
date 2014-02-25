@@ -10,8 +10,7 @@
 // Connect a 10K resistor from pin 2 (data) to pin 1 (power) of the sensor
 // Note: Edit the DHT.cpp file, remove the Serial.print() lines. Those prints
 //       mess up the Serial output from the WeatherDuino
-DHT dht[4] = 
-{
+DHT dht[4] = {
   DHT(3, DHT11), // #1 is connected to Pin3 and type is dht11
   DHT(4, DHT11), // #2 is connected to Pin4 and type is dht11
   DHT(5, DHT11), // #3 is connected to Pin5 and type is dht11
@@ -26,13 +25,16 @@ OneWire oneWire(2);
 
 // Pass our oneWire reference to Dallas Temperature. 
 DallasTemperature onewire(&oneWire);
+
+static byte probecount = 4;
+
 // Add all four probes to an array for easy for-loop processing!
-const DeviceAddress Probe[4] PROGMEM = 
+DeviceAddress Probes[] = 
 {
-  { 0x28, 0x0B, 0x4D, 0xC6, 0x04, 0x00, 0x00, 0x4D }, // OneWire probe #1
-  { 0x28, 0x35, 0xD8, 0xC6, 0x04, 0x00, 0x00, 0xD6 }, // OneWire probe #2
-  { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }, // OneWire probe #3
-  { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }  // OneWire probe #4
+  { 0x28, 0x0D, 0x29, 0xDA, 0x04, 0x00, 0x00, 0xDB }, // OneWire probe #1
+  { 0x28, 0x44, 0x1F, 0xD3, 0x04, 0x00, 0x00, 0xB3 }, // OneWire probe #2
+  { 0x28, 0xAC, 0x89, 0xD3, 0x04, 0x00, 0x00, 0x10 }, // OneWire probe #3
+  { 0x28, 0x4B, 0x5A, 0xD3, 0x04, 0x00, 0x00, 0xAC }  // OneWire probe #4
 };
 
 // enc28j60 connections:
@@ -40,28 +42,31 @@ const DeviceAddress Probe[4] PROGMEM =
 // SPI S0 	 Pin D12 
 // SPI CI 	 Pin D11 
 // SPI CS 	 Pin D08
+const byte chipSelect = 8;
+
 // ethernet interface mac address - must be unique on your network
 // last three bytes of the MAC are used as ID header.
-static byte mymac[] = { 0xAC,0xDE,0x48,0xC0,0xFF,0xEE };
+const byte mymac[] = { 0xAC,0xDE,0x48,0xC0,0xFF,0xEE };
 byte Ethernet::buffer[700]; // Minimal value to get basic DHCP reply
 
 // Set STATIC to 1 to disable DHCP
-#define STATIC 0
+#define STATIC 1
 // If set to Static, use below addresses
 #if STATIC
-  static byte myip[] PROGMEM = { 10,11,12,13 };
-  static byte mymask[] PROGMEM = { 255,255,255,0 };
-  static byte gwip[] PROGMEM = { 10,11,12,1 };
+  const byte myip[] PROGMEM = { 192,168,1,2 };
+  const byte mymask[] PROGMEM = { 255,255,255,0 };
+  const byte gwip[] PROGMEM = { 192,168,1,1 };
 #endif
 const int srcPort = 65000; // Originating port
 const int dstPort = 65001; // Destination port
-byte dstIp[] = { 255,255,255,255 }; // Destination IP address
-
+uint8_t dstIp[] = { 255,255,255,255 }; // Destination IP address
 
 void setup() {
-//  Serial.begin(57600);
+  Serial.begin(57600);
   //Set the ethernet interface
-  ether.begin(sizeof Ethernet::buffer, mymac, 8); // Set the int to the Arduino Pin.
+  if (ether.begin(sizeof Ethernet::buffer, mymac, chipSelect) == 0)
+    Serial.println("No eth?"); 
+
   #if STATIC
     ether.staticSetup(myip, mymask, gwip);
   #else
@@ -71,102 +76,43 @@ void setup() {
       ether.dhcpSetup();
     }
   #endif
+  ether.printIp("IPv4: ", ether.myip);
+
   // Start the probes
-  dht[0].begin();
-  dht[1].begin();
-  dht[2].begin();
-  dht[3].begin();
+  for (int i = 0; i < probecount; i++) {
+    dht[i].begin();
+  }
   onewire.begin();
 }
 
 void loop() {
   // Request a temperature measurement from the OneWire Probes
   onewire.requestTemperatures();
-  // Set all readings to the "No Sensor value"
-  int16_t temps[] = { -12700, -12700, -12700, -12700 }; // multiply by 100 for 2 decimals accurate integers
-  int16_t hums[] = { -127, -127, -127, -127 };
-  int16_t hum;
+
+  // first byte is number of probes
+  // subsequent pairs of 3 bytes consist of:
+  // temperature, temperature behind decimal, humidity
+  
+  uint8_t packet_data[(probecount)*3 + 1];
+  packet_data[0] = probecount;
+  
+  uint8_t hum;
   int16_t temp;
 
-  // Read all the DS18B20 and DHT11 sensors
-  for (int i = 0; i < 4; i++) {
-    temp = int(onewire.getTempC(Probe[i]) * 100); // multiply by 100 to get 2 decimals accurate integers
-    if ( temp != 8500 ) {
-      temps[i] = temp;
+  // Read all the DS18B20 and DHT* sensors
+  for (int i = 0; i < probecount; i++) {
+    temp = int(onewire.getTempC(Probes[i]));
+    if ( temp < 100 ) {
+      packet_data[(i*3) + 1] = temp;
+    } else {
+      packet_data[(i*3) + 1] = 0xffff; //max out values so listener knows its not valid
     }
     hum = dht[i].readHumidity();
-    if ( isnan(hum) != 1 && hum != 0 ) {
-      hums[i] = hum;
-    }
+    if (isnan(hum) != 1 && hum != 0 ) {
+      packet_data[(i*3)+3] = hum;
+    } else {
+      packet_data[(i*3)+3] = 0xff; // max out values so listener knows its not valid
+    }    
   }
-
-  /* Test value generation
-  temps[0] = 1004; //int(random(-20, 75) * 100);
-  temps[1] = -1212; //int(random(-20, 75) * 100);
-  temps[2] = -105; //int(random(-20, 75) * 100);
-  temps[3] = 309; //int(random(-20, 75) * 100);
-  hums[0] = random(5, 95);
-  hums[1] = random(5, 95);
-  hums[2] = random(5, 95);
-  hums[3] = random(5, 95);
-  delay(1000);
-  /* Uncomment above section for testing! */
-
-  /* Dump the sensor values as JSON in a var
-  String json_out = "{\"WeatherDuino\":[";
-  for (int i = 0; i < 4; i++) {
-    json_out += "{\"probe\":";
-    json_out += int(i + 1);
-    json_out += ",\"temp\":";
-    json_out += FloatToStr(temps[i]);
-    json_out += ",\"humid\":";
-    json_out += FloatToStr(hums[i]);
-    // Max 4 probes, should not place the comma after the last probe
-    if ( i < 3 ) {
-      json_out += "},";
-    }
-  } 
-  // To reduce Serial.Print() lines in the for loop, add the last
-  // closing } for the last probe down here as well.
-  json_out += "}]}";
-  Serial.println(json_out);  
-  */
-  // Packet format: 
-  // Byte 1, 2 and 3 are device ID
-  // Bytes up to byte 0xFF are Probe 1
-  // Bytes up to byte 0xFF are Probe 2
-  // Bytes up to byte 0xFF are Probe 3
-  // Bytes up to byte 0xFF are Probe 4
-  byte packet_data[] = { mymac[3], mymac[4], mymac[5], 
-                         char(temps[0]), 0xFF, char(hums[0]), 0xFF,
-                         char(temps[1]), 0xFF, char(hums[1]), 0xFF,
-                         char(temps[2]), 0xFF, char(hums[2]), 0xFF,
-                         char(temps[3]), 0xFF, char(hums[3]), 0xFF};
-  
-//  int len = json_out.length()+1;
-//  char packet_data[len];
-//  json_out.toCharArray(packet_data, len);
-  ether.sendUdp((char *) packet_data, 128, srcPort, dstIp, dstPort);
+  ether.sendUdp((char *) packet_data, sizeof(packet_data), srcPort, dstIp, dstPort);
 }
-
-String FloatToStr(float value) {
-  // Returns the float as a string with 2 decimals accuracy.
-  int major = int(value);
-  value = value * 100;
-  int minor = int(value);
-  minor = minor - major * 100;
-  if (minor < 0 ) {
-    // If the number is negative, make it positive.
-    minor = minor * -1;
-  }
-  String result = "";
-  result += major;
-  result += ".";
-  if ( minor < 10 ) {
-    result += "0";
-  }
-  result += minor;
-  return result;
-}
-  
-    

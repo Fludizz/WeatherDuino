@@ -41,3 +41,25 @@ Serial Output is JSON, the output looks like this:
 }
 
 All on a single line.
+
+UDP output
+=============
+
+The arduino can output udp over an ecn2860 ic, for this you need th ethercard 
+library available here: https://github.com/jcw/ethercard
+
+The udp packet will hold:
+first byte: number of probes
+each subsequent set of 3 bytes, for each probe:
+temp, temp fractions, humidity
+
+For the ENC28J60 module, connect the following (these are etherCard defaults):
+Or place the ecn on the weatherduino board as shown on the silkscreen.
+* VCC -> 3.3V
+* GND -> GND
+* SCK (clock)    -> pin 13 (Hardware SPI clock)
+* SO (slave out) -> pin 12 (Hardware SPI master-in)
+* SI (slave in)  -> pin 11 (Hardware SPI master-out)
+* CS (chip-select) -> pin 8
+
+
