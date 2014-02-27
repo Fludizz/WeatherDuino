@@ -97,13 +97,14 @@ void loop() {
   packet_data[0] = probecount;
   
   uint8_t hum;
-  int16_t temp;
+  float temp;
 
   // Read all the DS18B20 and DHT* sensors
   for (int i = 0; i < probecount; i++) {
-    temp = int(onewire.getTempC(Probes[i]));
+    temp = float(onewire.getTempC(Probes[i]));
     if ( temp < 100 ) {
-      packet_data[(i*3) + 1] = temp;
+      packet_data[(i*3)+1] = int(temp);
+      packet_data[(i*3)+2] = int((temp - int(temp)) * 100 ); //ohgod help me fix this
     } else {
       packet_data[(i*3) + 1] = 0xffff; //max out values so listener knows its not valid
     }

@@ -7,7 +7,7 @@ import socket
 import optparse
 import struct
 
-def WeatherDuinoListener(port):
+def WeatherDuinoListener(port, handler):
   """This function listens for udp packets on all ethernet interfaces on the 
   given port and processes them."""
   UDPSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -16,7 +16,7 @@ def WeatherDuinoListener(port):
   while True:
     data, addr = UDPSock.recvfrom(1024)
     for measurement in ProcessPacket(data):
-      PrintMeasurements(*measurement)
+      handler(*measurement)
   UDPSock.close()
 
 def ProcessPacket(data):
@@ -46,7 +46,7 @@ def main():
                     help="Listen port", default=65001)
   (options, args) = parser.parse_args()
 
-  WeatherDuinoListener(options.port)
+  WeatherDuinoListener(options.port, PrintMeasurements)
 
 if __name__ == '__main__':
   main()
