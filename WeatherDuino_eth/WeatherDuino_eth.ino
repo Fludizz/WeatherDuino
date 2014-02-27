@@ -93,8 +93,14 @@ void loop() {
   // subsequent pairs of 3 bytes consist of:
   // temperature, temperature behind decimal, humidity
   
-  uint8_t packet_data[(probecount)*3 + 1];
-  packet_data[0] = probecount;
+  // how many bytes before we start with the probe data
+  uint8_t offset = 4;
+  
+  uint8_t packet_data[(probecount)*3 + offset];
+  packet_data[0] = mymac[3];
+  packet_data[1] = mymac[4];
+  packet_data[2] = mymac[5];
+  packet_data[3] = probecount;
   
   uint8_t hum;
   float temp;
@@ -103,17 +109,17 @@ void loop() {
   for (int i = 0; i < probecount; i++) {
     temp = float(onewire.getTempC(Probes[i]));
     if ( temp < 100 ) {
-      packet_data[(i*3)+1] = int(temp);
-      packet_data[(i*3)+2] = int((temp - int(temp)) * 100 ); //ohgod help me fix this
+      packet_data[(i*3)+offset] = int(temp);
+      packet_data[(i*3)+offset+1] = int((temp - int(temp)) * 100 ); //ohgod help me fix this
     } else {
-      packet_data[(i*3) + 1] = 0xffff; //max out values so listener knows its not valid
+      packet_data[(i*3) + offset] = 0xffff; //max out values so listener knows its not valid
     }
+    
     hum = dht[i].readHumidity();
     if (isnan(hum) != 1 && hum != 0 ) {
-      packet_data[(i*3)+3] = hum;
-    } else {
-      packet_data[(i*3)+3] = 0xff; // max out values so listener knows its not valid
-    }    
+      hum = 0xff;
+    }  
+    packet_data[(i*3)+offset+2] = hum;
   }
   ether.sendUdp((char *) packet_data, sizeof(packet_data), srcPort, dstIp, dstPort);
 }
