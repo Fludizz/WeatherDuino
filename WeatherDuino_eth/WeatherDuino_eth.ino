@@ -116,7 +116,10 @@ void loop() {
     }
     
     hum = dht[i].readHumidity();
-    if (isnan(hum) != 1 && hum != 0 ) {
+    Serial.print(i);
+    Serial.print(": ");
+    Serial.println(hum);
+    if (isnan(hum) == 1 || hum == 0 ) {
       hum = 0xff;
     }  
     packet_data[(i*3)+offset+2] = hum;

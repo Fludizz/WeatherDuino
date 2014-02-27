@@ -1,4 +1,5 @@
 #!/usr/bin/python2.7
+# -*- coding: utf8 -*-
 """ UDP listening client for the Weatherduino UDP output"""
 __author__ = 'Jan KLopper (jan@underdark.nl)'
 __version__ = 0.1
@@ -26,9 +27,9 @@ def ProcessPacket(data):
   print '%d probes found on %x:%x:%x' % (
       probecount, device[0], device[1], device[2])
   for sensor in range(0, probecount):
-    humidity = ord(data[(sensor*3)+3:(sensor*3)+4])
-    temp = (ord(data[(sensor*3)+1:(sensor*3)+2]), 
-            ord(data[(sensor*3)+2:(sensor*3)+3]))
+    humidity = ord(data[(sensor*3)+6:(sensor*3)+7])
+    temp = (ord(data[(sensor*3)+4:(sensor*3)+5]), 
+            ord(data[(sensor*3)+5:(sensor*3)+6]))
     yield (device, sensor, temp, humidity)
 
 def PrintMeasurements(device, sensor, temp, humidity):
@@ -36,7 +37,7 @@ def PrintMeasurements(device, sensor, temp, humidity):
   if temp[0] < 129 or humidity < 255:
     print 'Sensor %i:' % sensor
   if temp[0] < 129:
-    print '\ttemp: %d.%dc' % temp 
+    print '\ttemp: %d.%02d°' % temp 
   if humidity < 255:
     print '\thumidity: %d%%' % humidity
   
