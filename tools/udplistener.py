@@ -24,12 +24,14 @@ def ProcessPacket(data):
   """This processes the actual data packet"""
   device = (ord(data[0]), ord(data[1]), ord(data[2]))
   probecount = ord(data[3])
+  offset = 4
+
   print '%d probes found on %x:%x:%x' % (
       probecount, device[0], device[1], device[2])
   for sensor in range(0, probecount):
-    humidity = ord(data[(sensor*3)+6:(sensor*3)+7])
-    temp = (ord(data[(sensor*3)+4:(sensor*3)+5]), 
-            ord(data[(sensor*3)+5:(sensor*3)+6]))
+    humidity = ord(data[(sensor*3)+offset+2:(sensor*3)+offset+3])
+    temp = (ord(data[(sensor*3)+offset:(sensor*3)+offset+1]), 
+            ord(data[(sensor*3)+offset+1:(sensor*3)+offset+2]))
     yield (device, sensor, temp, humidity)
 
 def PrintMeasurements(device, sensor, temp, humidity):

@@ -89,7 +89,8 @@ void loop() {
   // Request a temperature measurement from the OneWire Probes
   onewire.requestTemperatures();
 
-  // first byte is number of probes
+  // first 3 bytes contain the last 3 mac address bytes
+  // fourth byte is number of probes
   // subsequent pairs of 3 bytes consist of:
   // temperature, temperature behind decimal, humidity
   
