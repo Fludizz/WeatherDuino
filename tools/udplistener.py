@@ -22,17 +22,20 @@ def WeatherDuinoListener(port, handler):
 
 def ProcessPacket(data):
   """This processes the actual data packet"""
-  device = (ord(data[0]), ord(data[1]), ord(data[2]))
-  probecount = ord(data[3])
-  offset = 4
+  magic = ord(data[0])
+  version = ord(data[1])
+  if magic == 101 && version == 1:
+    device = (ord(data[2]), ord(data[3]), ord(data[4]))
+    probecount = ord(data[5])
+    offset = 6
 
-  print '%d probes found on %x:%x:%x' % (
-      probecount, device[0], device[1], device[2])
-  for sensor in range(0, probecount):
-    humidity = ord(data[(sensor*3)+offset+2:(sensor*3)+offset+3])
-    temp = (ord(data[(sensor*3)+offset:(sensor*3)+offset+1]), 
-            ord(data[(sensor*3)+offset+1:(sensor*3)+offset+2]))
-    yield (device, sensor, temp, humidity)
+    print '%d probes found on %x:%x:%x' % (
+        probecount, device[0], device[1], device[2])
+    for sensor in range(0, probecount):
+      humidity = ord(data[(sensor*3)+offset+2:(sensor*3)+offset+3])
+      temp = (ord(data[(sensor*3)+offset:(sensor*3)+offset+1]), 
+              ord(data[(sensor*3)+offset+1:(sensor*3)+offset+2]))
+      yield (device, sensor, temp, humidity)
 
 def PrintMeasurements(device, sensor, temp, humidity):
   """Prints the data for a sensor if either temperature or humidty is valid"""

@@ -95,13 +95,15 @@ void loop() {
   // temperature, temperature behind decimal, humidity
   
   // how many bytes before we start with the probe data
-  uint8_t offset = 4;
+  uint8_t offset = 6;
   
   uint8_t packet_data[(probecount)*3 + offset];
-  packet_data[0] = mymac[3];
-  packet_data[1] = mymac[4];
-  packet_data[2] = mymac[5];
-  packet_data[3] = probecount;
+  packet_data[0] = 0x65; // magic id for our protocol
+  packet_data[1] = 0x01; // protocol version
+  packet_data[2] = mymac[3]; // device identifier
+  packet_data[3] = mymac[4];
+  packet_data[4] = mymac[5];
+  packet_data[5] = probecount; // number of probes in this packet
   
   uint8_t hum;
   float temp;
@@ -113,7 +115,7 @@ void loop() {
       packet_data[(i*3)+offset] = int(temp);
       packet_data[(i*3)+offset+1] = int((temp - int(temp)) * 100 ); //ohgod help me fix this
     } else {
-      packet_data[(i*3) + offset] = 0xffff; //max out values so listener knows its not valid
+      packet_data[(i*3)+offset] = 0xffff; //max out values so listener knows its not valid
     }
     
     hum = dht[i].readHumidity();
