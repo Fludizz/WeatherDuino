@@ -24,7 +24,7 @@ def ProcessPacket(data):
   """This processes the actual data packet"""
   magic = ord(data[0])
   version = ord(data[1])
-  if magic == 101 && version == 1:
+  if magic == 101 and version == 1:
     device = (ord(data[2]), ord(data[3]), ord(data[4]))
     probecount = ord(data[5])
     offset = 6
