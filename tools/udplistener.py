@@ -102,16 +102,16 @@ if sqlite:
           print 'Create sqlite database %s' % options.sql
         cursor = self.logconnection.cursor()
         cursor.execute("""
-          CREATE TABLE sensors (date, device, sensor, temp, humidty)""")
+          CREATE TABLE sensors (date, device, sensor, temp, humidity)""")
         self.logconnection.commit()
       
     def StoreMeasurements(self, device, sensor, temp, humidity):
-      """Store the data for a sensor if either temperature or humidty is valid"""
+      """Store the data for a sensor if either temperature or humidity is valid"""
       cursor = self.logconnection.cursor()
       
       if temp[0] < 129 or humidity < 255:
-        cursor.execute("INSERT INTO sensors VALUES ('%s','%s',%d,%f,%d)" % (
-            time.strftime("%H:%M:%S"),
+        cursor.execute("INSERT INTO sensors VALUES (%d,'%s',%d,%f,%d)" % (
+            int(time.time()),
             device,
             sensor,
             float('%d.%02d' % temp), 
