@@ -205,6 +205,16 @@ def ContinualRRDwrite(config):
         print "Ignoring invalid key %s" % err
         pass
 
+    # Ignore the probes on the ignore list. Set them to "U" which means Unknown
+    # in the RRDtool specifications.
+    if config["misc"]["ignore"]:
+      ignores = config["misc"]["ignore"].upper().split(',')
+      for sens in ignores:
+        if sens[0] == "T":
+          temps[int(sens[1]) - 1] = "U"
+        elif sens[0] == "H":
+          hums[int(sens[1]) - 1] = "U"
+
     # Update RRDfile regardless of the graphs/time
     UpdateRRDfile(path, temprrd, temps)
     UpdateRRDfile(path, humidrrd, hums)
@@ -231,6 +241,8 @@ if __name__ == '__main__':
                     help="Number of probes connected to WeatherDuino")
   parser.add_option("-p", "--path", metavar="PATH", default=".",
                     help="Destination path where the RRD & graphs are written")
+  parser.add_option("-i", "--ignore", metavar="IGNORE", default=None,
+                    help="Ignore Probe/Sensor. E.g. 'T1,H2' to ignore Probe 1 Temperature and Probe 2 Humidity")
   parser.add_option("-x", "--prefix", metavar="PREFIX", default="WeatherDuino",
                     help="Filename prefix for the RRD files.")
   (opts, args) = parser.parse_args()
@@ -245,7 +257,8 @@ if __name__ == '__main__':
                          "baud": opts.baud,
                          "num": opts.num },
              "files": { "path": opts.path,
-                        "prefix": opts.prefix } }
+                        "prefix": opts.prefix },
+             "misc": { "ignore" : opts.ignore } }
 # Check for config file and overwrite the config using this file.
   if opts.conf:
     # Some basic path expansion
