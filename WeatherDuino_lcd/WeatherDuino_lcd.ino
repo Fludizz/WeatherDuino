@@ -101,13 +101,13 @@ void loop() {
   }
   
   /* Test value generation
-  temps[0] = random(-20, 75);
-  temps[1] = random(-20, 75);
-  temps[2] = random(-20, 75);
+  temps[0] = random(-10, 10);
+  temps[1] = random(5, 15);
+  temps[2] = random(20, 25);
   temps[3] = random(-20, 75);
-  hums[0] = random(5, 95);
-  hums[1] = random(5, 95);
-  hums[2] = random(5, 95);
+  hums[0] = random(5, 25);
+  hums[1] = random(35, 65);
+  hums[2] = random(50, 75);
   hums[3] = random(5, 95);
   delay(1000);
   /* Uncomment above section for testing! */
