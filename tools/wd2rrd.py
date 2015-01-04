@@ -118,7 +118,7 @@ def ProcessRRDdata(path, rrd, prefix, name, axis_unit):
           "DEF:P4max=%s:P4:MAX" % rrdfile,
           "TEXTALIGN:left",
           # Using whitespaces to align everything. Tabs behave unpredictable!
-          "COMMENT:Cur       Max       Avg       Min  \\r",
+          "COMMENT:Last      Max       Avg       Min  \\r",
           "LINE1:P1avg#00CC00:Probe1\::",
           "GPRINT:P1avg:LAST:%%6.1lf%s" % unit,
           "GPRINT:P1max:MAX:%%6.1lf%s" % unit,
