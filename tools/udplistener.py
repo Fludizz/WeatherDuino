@@ -14,6 +14,7 @@ import time
 import os
 import sys
 import pickle
+import ConfigParser
 
 try:
   import sqlite3
@@ -62,8 +63,13 @@ class WeatherDuinoListener(object):
 
   def PrintMeasurements(self, device, sensor, temp, humidity):
     """Prints the data for a sensor if either temperature or humidty is valid"""
+    device = '%x:%x:%x' % (device[0], device[1], device[2])
+    try:
+      sensor = self.options.config.get(device, str(sensor))
+    except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
+      pass
     if temp[0] < 129 or humidity < 255:
-      print 'Sensor %i:' % sensor
+      print 'Sensor %s:' % sensor
     if temp[0] < 129:
       print '\ttemp: %d.%02d°' % temp
     if humidity < 255:
@@ -134,14 +140,17 @@ class CarbonWeatherDuinoListener(WeatherDuinoListener):
   def StoreMeasurements(self, device, sensor, temp, humidity):
     """Store the data for a sensor if either temperature or humidty is valid"""
     output = {}
+    device = '%x:%x:%x' % (device[0], device[1], device[2])
     if temp[0] < 129 or humidity < 255:
-      path = 'weather.%x:%x:%x.Sensor_%i' % (
-        device[0], device[1], device[2], sensor)
+      try:
+        sensor = self.options.config.get(device, str(sensor))
+      except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
+        pass
+      path = 'weather.%s' % (device, sensor)
     if temp[0] < 129:
       output['%s.temp' % path] = float('%d.%02d' % temp)
     if humidity < 255:
       output['%s.humidity' % path] = humidity
-    print repr(output)
     self.SendToCarbon(output)
 
   def SendToCarbon(self, output):
@@ -179,6 +188,13 @@ def main():
     parser.add_argument("-s", "--sqloutput", dest="sql",
                       help="sqlite file")
   options = parser.parse_args()
+
+  config = ConfigParser.ConfigParser()
+  try:
+    config.read(['.weatherduino', os.path.expanduser('~/.weatherduino')])
+    options.config = config
+  except:
+    pass
 
   if options.log:
     wduino = LogWeatherDuinoListener(options, 'StoreMeasurements')
