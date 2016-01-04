@@ -62,4 +62,11 @@ Or place the ecn on the weatherduino board as shown on the silkscreen.
 * SI (slave in)  -> pin 11 (Hardware SPI master-out)
 * CS (chip-select) -> pin 8
 
-
+Tools
+=============
+The udplistener in the tools directory allows you to listen to a networked 
+weatherduino to pick up its signals and store/send them in/to:
+* A text file
+* A sqlite database
+* A Graphite / Carbon backend
+* Stdout

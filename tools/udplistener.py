@@ -12,6 +12,8 @@ import argparse
 import struct
 import time
 import os
+import sys
+import pickle
 
 try:
   import sqlite3
@@ -21,7 +23,7 @@ except ImportError:
 
 class WeatherDuinoListener(object):
   def __init__(self, options, handler):
-    """This function listens for udp packets on all ethernet interfaces on the 
+    """This function listens for udp packets on all ethernet interfaces on the
     given port and processes them."""
 
     self.options = options
@@ -33,7 +35,7 @@ class WeatherDuinoListener(object):
 
   def Run(self):
     count = 0
-    while True:      
+    while True:
       data, addr = self.UDPSock.recvfrom(1024)
       if self.verbose:
         count = count + 1
@@ -54,7 +56,7 @@ class WeatherDuinoListener(object):
             probecount, device[0], device[1], device[2])
       for sensor in range(0, probecount):
         humidity = ord(data[(sensor*3)+offset+2:(sensor*3)+offset+3])
-        temp = (ord(data[(sensor*3)+offset:(sensor*3)+offset+1]), 
+        temp = (ord(data[(sensor*3)+offset:(sensor*3)+offset+1]),
                 ord(data[(sensor*3)+offset+1:(sensor*3)+offset+2]))
         yield (device, sensor, temp, humidity)
 
@@ -63,7 +65,7 @@ class WeatherDuinoListener(object):
     if temp[0] < 129 or humidity < 255:
       print 'Sensor %i:' % sensor
     if temp[0] < 129:
-      print '\ttemp: %d.%02d°' % temp 
+      print '\ttemp: %d.%02d°' % temp
     if humidity < 255:
       print '\thumidity: %d%%' % humidity
 
@@ -90,7 +92,7 @@ class LogWeatherDuinoListener(WeatherDuinoListener):
 if sqlite:
   class SQLWeatherDuinoListener(WeatherDuinoListener):
     """This abstraction saves the collected data to a sqllite backend"""
-    
+
     def __init__(self, options, handler):
       super(SQLWeatherDuinoListener, self).__init__(options, handler)
       skipcreate = False
@@ -104,42 +106,86 @@ if sqlite:
         cursor.execute("""
           CREATE TABLE sensors (date, device, sensor, temp, humidity)""")
         self.logconnection.commit()
-      
+
     def StoreMeasurements(self, device, sensor, temp, humidity):
       """Store the data for a sensor if either temperature or humidity is valid"""
       cursor = self.logconnection.cursor()
-      
       if temp[0] < 129 or humidity < 255:
         cursor.execute("INSERT INTO sensors VALUES (%d,'%s',%d,%f,%d)" % (
             int(time.time()),
             device,
             sensor,
-            float('%d.%02d' % temp), 
+            float('%d.%02d' % temp),
             humidity))
         self.logconnection.commit()
 
+
+class CarbonWeatherDuinoListener(WeatherDuinoListener):
+  """This abstraction saves the collected data to a Carbon server"""
+  def __init__(self, options, handler):
+    super(CarbonWeatherDuinoListener, self).__init__(options, handler)
+    try:
+      server, port = options.carbon.split(':')
+      self.carbonsocket = socket.create_connection((server, int(port)))
+    except socket.error, msg:
+      print 'Cannot connect to carbon server: %r' % msg
+      sys.exit()
+
+  def StoreMeasurements(self, device, sensor, temp, humidity):
+    """Store the data for a sensor if either temperature or humidty is valid"""
+    output = {}
+    if temp[0] < 129 or humidity < 255:
+      path = 'weather.%x:%x:%x.Sensor_%i' % (
+        device[0], device[1], device[2], sensor)
+    if temp[0] < 129:
+      output['%s.temp' % path] = float('%d.%02d' % temp)
+    if humidity < 255:
+      output['%s.humidity' % path] = humidity
+    print repr(output)
+    self.SendToCarbon(output)
+
+  def SendToCarbon(self, output):
+    """Wrapper to output data to Carbon as Pickeld data"""
+    timestamp = int(time.time())
+    items = []
+    for key, stat in sorted(output.items()):
+      items.append( (key, (timestamp, stat)))
+    payload = pickle.dumps(items)
+    header = struct.pack("!L", len(payload))
+    message = header + payload
+    self.carbonsocket.send(message)
+
+  def __del__(self):
+    self.carbonsocket.shutdown(1)
+    self.carbonsocket.close()
+
 def main():
-  """This program listenes to the broadcast address on the listening port and 
+  """This program listenes to the broadcast address on the listening port and
   handles any received measurements
-  
-  Measurements are stored in sql (if available), logfile, or output to stdout"""
+
+  Measurements are stored in:
+	 sqlite (if available), logfile, Carbon, or outputs to stdout"""
   parser = argparse.ArgumentParser()
   parser.add_argument("-p", "--port", dest="port",
                     help="Listen port", default=65001)
   parser.add_argument("-v", "--verbose", dest="verbose",
                     action="store_true",
-                    help="Be verbose", default=False)                    
+                    help="Be verbose", default=False)
   parser.add_argument("-l", "--logoutput", dest="log",
                     help="Output file")
+  parser.add_argument("-c", "--carbon", dest="carbon",
+                    help="Carbon server")
   if sqlite:
     parser.add_argument("-s", "--sqloutput", dest="sql",
                       help="sqlite file")
   options = parser.parse_args()
 
   if options.log:
-    wduino = LogWeatherDuinoListener(options, 'StoreMeasurements')  
+    wduino = LogWeatherDuinoListener(options, 'StoreMeasurements')
+  elif options.carbon:
+    wduino = CarbonWeatherDuinoListener(options, 'StoreMeasurements')
   elif options.sql and sqlite:
-    wduino = SQLWeatherDuinoListener(options, 'StoreMeasurements')  
+    wduino = SQLWeatherDuinoListener(options, 'StoreMeasurements')
   else:
     wduino = WeatherDuinoListener(options, 'PrintMeasurements')
   wduino.Run()
