@@ -4,7 +4,7 @@
 __author__ = 'Jan KLopper (jan@underdark.nl)'
 __version__ = 0.1
 
-PROTOCOLVERSION = 1
+PROTOCOLVERSION = (1,2)
 MAGIC = 101
 
 import socket
@@ -15,6 +15,7 @@ import os
 import sys
 import pickle
 import ConfigParser
+import math
 
 try:
   import sqlite3
@@ -48,18 +49,34 @@ class WeatherDuinoListener(object):
     """This processes the actual data packet"""
     magic = ord(data[0])
     version = ord(data[1])
-    if magic == MAGIC and version == PROTOCOLVERSION:
+    if magic == MAGIC and version in PROTOCOLVERSION:
       device = (ord(data[2]), ord(data[3]), ord(data[4]))
-      probecount = ord(data[5])
-      offset = 6
-      if self.verbose:
-        print '%d probes found on %x:%x:%x' % (
-            probecount, device[0], device[1], device[2])
-      for sensor in range(0, probecount):
-        humidity = ord(data[(sensor*3)+offset+2:(sensor*3)+offset+3])
-        temp = (ord(data[(sensor*3)+offset:(sensor*3)+offset+1]),
-                ord(data[(sensor*3)+offset+1:(sensor*3)+offset+2]))
-        yield (device, sensor, temp, humidity)
+      if self.options.filter and self.options.filter != device:
+        if self.verbose:
+          print 'skipping device: %r' % device
+      else:
+        probecount = ord(data[5])
+        offset = 6
+        if self.verbose:
+          print '%d probes found on %x:%x:%x' % (
+              probecount, device[0], device[1], device[2])
+        if version == 1:
+          fragmentsize = 3
+          for sensor in range(0, probecount):
+            sensoroffet = (sensor*fragmentsize)+offset
+            humidity = ord(data[sensoroffet+2])
+            temp = (ord(data[sensoroffet]),
+                    ord(data[sensoroffet+1]))
+            yield (device, sensor, temp, humidity)
+        elif version == 2:
+          fragmentsize = 5
+          for sensor in xrange(0, probecount):
+            sensoroffet = (sensor*fragmentsize)+offset
+            humidity = ord(data[sensoroffet+4])
+            rawtemp = data[sensoroffet:sensoroffet+4]
+            temp = struct.unpack('<f', rawtemp)[0]
+            temp = (int(math.floor(temp)), int((temp - math.floor(temp))*100))
+            yield (device, sensor, temp, humidity)
 
   def PrintMeasurements(self, device, sensor, temp, humidity):
     """Prints the data for a sensor if either temperature or humidty is valid"""
@@ -68,6 +85,7 @@ class WeatherDuinoListener(object):
       sensor = self.options.config.get(device, str(sensor))
     except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
       pass
+    print device
     if temp[0] < 129 or humidity < 255:
       print 'Sensor %s:' % sensor
     if temp[0] < 129:
@@ -184,6 +202,8 @@ def main():
                     help="Output file")
   parser.add_argument("-c", "--carbon", dest="carbon",
                     help="Carbon server")
+  parser.add_argument("-f", "--filter", dest="filter",
+                    help="Filter device")
   if sqlite:
     parser.add_argument("-s", "--sqloutput", dest="sql",
                       help="sqlite file")
