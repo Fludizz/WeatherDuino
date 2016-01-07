@@ -8,10 +8,8 @@ See http://frack.nl/wiki/WeatherDuino (Dutch) for more details on the project.
 DHT11 Library
 =============
 
-Get it here: https://github.com/adafruit/DHT-sensor-library
-This project uses the generic DHT11 library, however for the JSON output to work
-on the serial line, the DHT.cpp file must be editted to remove the lines 
-containing "Serial.print()"
+Get it here: https://github.com/markruys/arduino-DHT
+This project uses a autosensing DHT11/DHT22/AM2302/RHT03 library
 
 OneWire Library
 ===============
@@ -25,6 +23,20 @@ DallasTemperature Library
 Get it here: https://github.com/milesburton/Arduino-Temperature-Control-Library
 This DallasTemperature library can be used without modifications.
 
+Auto detection
+==============
+The WeatherDuino automatically detects any onewire sensors you might have.
+It does this using the following procedure:
+* An empty Weatherduino (fresh from the programmer) boots
+* Finds it has no onewire addresses stored
+* Starts scanning the onewire bus
+* Finds the first (onboard device) and stores it's address in eeprom
+* waits for the 2nd sensorsboard to be connected
+* Stores its address
+* it repeats these steps untill it finds four sensors, or untill you reset the
+  device
+* After reset the device will read the number of detected sensors from the
+  EEPROM and use those, to restart scanning disconnect a sensor.
 
 Serial Output
 =============
@@ -43,7 +55,7 @@ Serial Output is JSON, the output looks like this:
 All on a single line.
 
 UDP output
-=============
+==========
 
 The arduino can output udp over an ecn2860 ic, for this you need th ethercard 
 library available here: https://github.com/jcw/ethercard
@@ -62,4 +74,11 @@ Or place the ecn on the weatherduino board as shown on the silkscreen.
 * SI (slave in)  -> pin 11 (Hardware SPI master-out)
 * CS (chip-select) -> pin 8
 
-
+Tools
+=====
+The udplistener in the tools directory allows you to listen to a networked 
+weatherduino to pick up its signals and store/send them in/to:
+* A text file
+* A sqlite database
+* A Graphite / Carbon backend
+* Stdout
