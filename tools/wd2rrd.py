@@ -62,6 +62,8 @@ def UpdateRRDfile(path, rrd, val, defs=DEFRRD):
     print "INFO: RRD file %s does not exist. Creating a new RRD file." % rrdfile
     rrdtool.create(rrdfile, defs)
   # update the data in the rrdfile:
+  while len(val) < 4:
+    val.append("NaN")
   rrdtool.update(rrdfile, "N:%s" % ":".join(map(str, val)))
 
 
@@ -150,6 +152,8 @@ def GetWeatherDevice(device="/dev/ttyUSB0", baud=57600):
   # Clear the initial junk from the buffer
   weatherduino.flushInput()
   weatherduino.readline()
+  while not "WeatherDuino" in weatherduino.readline():
+    print "%s (%sbps): Detecting ... " % (device,baud)
   if "WeatherDuino" in json.loads(weatherduino.readline()):
     print "%s (%sbps): WeatherDuino initialized!" % (device,baud)
     return weatherduino
@@ -183,7 +187,7 @@ def ContinualRRDwrite(config):
   hums = [ None ] * int(config['device']['num'])
   while True:
     try:
-      data = json.loads(arduino.readline().strip())['WeatherDuino']
+      data = json.loads(arduino.readline().strip())["WeatherDuino"]
     except serial.serialutil.SerialException, err:
       print "[%s] Error: %s" % (time.ctime(), err)
       sys.exit(1)
