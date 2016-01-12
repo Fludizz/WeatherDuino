@@ -27,7 +27,7 @@ DeviceAddress Probes[4] = { //initialize to zero
   {0, 0, 0, 0, 0, 0, 0, 0},
   {0, 0, 0, 0, 0, 0, 0, 0},
   {0, 0, 0, 0, 0, 0, 0, 0}
-};;
+};
 
 // enc28j60 connections:
 // SPI SCK 	 Pin D13 
