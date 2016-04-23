@@ -8,4 +8,4 @@ ARDUINO_PORT           = /dev/ttyUSB0
 AVRDUDE_ARD_BAUDRATE   = 115200
 AVRDUDE_ARD_PROGRAMMER = arduino
 
-include /usr/share/arduino/Arduino.mk
+include $(ARDUINO_DIR)/Arduino.mk
