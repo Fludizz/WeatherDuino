@@ -45,6 +45,93 @@ const byte eeprom_addressoffset = 16; // to 16+(4*8)
 
 int eeprom_numberofsensors;
 
+void find_onewire_devices(){
+  // loops trough the list of connected devices and registers them to the eeprom
+  // this only happens when 0 sensors have been found on setup
+  // this happens only on the first boot
+  // New sensors should be attached starting at sensor 1, etc.
+  Serial.println("Detecting new devices, connect one at a time");
+  byte type_s;
+  byte addr[8];
+  byte number_of_sensors = 0;
+  bool foundmatch = false;
+  bool foundnew = true;
+
+  while(true){
+    if (number_of_sensors == 4){
+      Serial.println("Max number of sensors attached.");
+      return;
+    }
+    if ( !oneWire.search(addr)) {
+      // nothing left to find, lets wait for a new device to be attached
+      delay(1000);
+      Serial.println("waiting for reboot or new sensors to be attached.");
+    } else {
+      // asume the found device is new
+      foundnew = true;
+      for(int i = 0; i < number_of_sensors; i++) {
+        // assume we are matching with the current eeprom reading
+        foundmatch = true;
+        for(int j = 0; j < 8; j++) {
+          if(Probes[i][j] != addr[j]){
+            // we are not matching, thus break the loop, and bubble up that this
+            // is not a match, ergo, it's still a new sensor
+            foundmatch = false;
+            break;
+          }
+        }
+        // all octecs are the same since we dind't break and there's a match,
+        // so not new
+        if(foundmatch){
+          foundnew = false;
+          break;
+        }
+        // still new if we reached this far, lets continue the loop over all
+        // sensors in eeprom
+        foundnew = true;
+      }
+      // we checked all sensors in eeprom, is the search result still new?
+      if(foundnew){
+        // addr should now contain a onewire addr
+        switch (addr[0]) {
+          case 0x10:
+            Serial.println("  Chip = DS18S20 found");  // or old DS1820
+            type_s = 1;
+            break;
+          case 0x28:
+            Serial.println("  Chip = DS18B20 found");
+            type_s = 0;
+            break;
+          case 0x22:
+            Serial.println("  Chip = DS1822 found");
+            type_s = 0;
+            break;
+          default:
+            Serial.println("Device found, but not a DS18x20 family device.");
+            return;
+        }
+        // found an address, lets store it in eeprom
+        for(int i = 0; i < 8; i++) {
+          EEPROM.write(eeprom_addressoffset + (8*number_of_sensors) + i, addr[i]);
+          Probes[number_of_sensors][i] = addr[i];
+          foundnew = false;
+        }
+        number_of_sensors++;
+        EEPROM.write(eeprom_sensorcountoffset, number_of_sensors);
+      }
+    }
+  }
+}
+
+void read_onewire_addresses(){
+  for (int i = 0; i < eeprom_numberofsensors; i++) {
+    for(int j = 0; j < 8; j++) {
+      Probes[i][j] = EEPROM.read(eeprom_addressoffset + (8*i) + j);
+    }
+  }
+}
+
+
 void setup() {
   Serial.begin(57600); 
 
@@ -193,88 +280,3 @@ void loop() {
   }
 }
 
-void find_onewire_devices(){
-  // loops trough the list of connected devices and registers them to the eeprom
-  // this only happens when 0 sensors have been found on setup
-  // this happens only on the first boot
-  // New sensors should be attached starting at sensor 1, etc.
-  Serial.println("Detecting new devices, connect one at a time");
-  byte type_s;
-  byte addr[8];
-  byte number_of_sensors = 0;
-  bool foundmatch = false;
-  bool foundnew = true;
-
-  while(true){
-    if (number_of_sensors == 4){
-      Serial.println("Max number of sensors attached.");
-      return;
-    }
-    if ( !oneWire.search(addr)) {
-      // nothing left to find, lets wait for a new device to be attached
-      delay(1000);
-      Serial.println("waiting for reboot or new sensors to be attached.");
-    } else {
-      // asume the found device is new
-      foundnew = true;
-      for(int i = 0; i < number_of_sensors; i++) {
-        // assume we are matching with the current eeprom reading
-        foundmatch = true;
-        for(int j = 0; j < 8; j++) {
-          if(Probes[i][j] != addr[j]){
-            // we are not matching, thus break the loop, and bubble up that this
-            // is not a match, ergo, it's still a new sensor
-            foundmatch = false;
-            break;
-          }
-        }
-        // all octecs are the same since we dind't break and there's a match,
-        // so not new
-        if(foundmatch){
-          foundnew = false;
-          break;
-        }
-        // still new if we reached this far, lets continue the loop over all
-        // sensors in eeprom
-        foundnew = true;
-      }
-      // we checked all sensors in eeprom, is the search result still new?
-      if(foundnew){
-        // addr should now contain a onewire addr
-        switch (addr[0]) {
-          case 0x10:
-            Serial.println("  Chip = DS18S20 found");  // or old DS1820
-            type_s = 1;
-            break;
-          case 0x28:
-            Serial.println("  Chip = DS18B20 found");
-            type_s = 0;
-            break;
-          case 0x22:
-            Serial.println("  Chip = DS1822 found");
-            type_s = 0;
-            break;
-          default:
-            Serial.println("Device found, but not a DS18x20 family device.");
-            return;
-        }
-        // found an address, lets store it in eeprom
-        for(int i = 0; i < 8; i++) {
-          EEPROM.write(eeprom_addressoffset + (8*number_of_sensors) + i, addr[i]);
-          Probes[number_of_sensors][i] = addr[i];
-          foundnew = false;
-        }
-        number_of_sensors++;
-        EEPROM.write(eeprom_sensorcountoffset, number_of_sensors);
-      }
-    }
-  }
-}
-
-void read_onewire_addresses(){
-  for (int i = 0; i < eeprom_numberofsensors; i++) {
-    for(int j = 0; j < 8; j++) {
-      Probes[i][j] = EEPROM.read(eeprom_addressoffset + (8*i) + j);
-    }
-  }
-}
