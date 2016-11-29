@@ -62,6 +62,8 @@ def UpdateRRDfile(path, rrd, val, defs=DEFRRD):
     print "INFO: RRD file %s does not exist. Creating a new RRD file." % rrdfile
     rrdtool.create(rrdfile, defs)
   # update the data in the rrdfile:
+  while len(val) < 4:
+    val.append("NaN")
   rrdtool.update(rrdfile, "N:%s" % ":".join(map(str, val)))
 
 
@@ -118,7 +120,7 @@ def ProcessRRDdata(path, rrd, prefix, name, axis_unit):
           "DEF:P4max=%s:P4:MAX" % rrdfile,
           "TEXTALIGN:left",
           # Using whitespaces to align everything. Tabs behave unpredictable!
-          "COMMENT:Cur       Max       Avg       Min  \\r",
+          "COMMENT:Last      Max       Avg       Min  \\r",
           "LINE1:P1avg#00CC00:Probe1\::",
           "GPRINT:P1avg:LAST:%%6.1lf%s" % unit,
           "GPRINT:P1max:MAX:%%6.1lf%s" % unit,
@@ -150,6 +152,8 @@ def GetWeatherDevice(device="/dev/ttyUSB0", baud=57600):
   # Clear the initial junk from the buffer
   weatherduino.flushInput()
   weatherduino.readline()
+  while not "WeatherDuino" in weatherduino.readline():
+    print "%s (%sbps): Detecting ... " % (device,baud)
   if "WeatherDuino" in json.loads(weatherduino.readline()):
     print "%s (%sbps): WeatherDuino initialized!" % (device,baud)
     return weatherduino
@@ -183,7 +187,7 @@ def ContinualRRDwrite(config):
   hums = [ None ] * int(config['device']['num'])
   while True:
     try:
-      data = json.loads(arduino.readline().strip())['WeatherDuino']
+      data = json.loads(arduino.readline().strip())["WeatherDuino"]
     except serial.serialutil.SerialException, err:
       print "[%s] Error: %s" % (time.ctime(), err)
       sys.exit(1)
@@ -204,6 +208,16 @@ def ContinualRRDwrite(config):
       except KeyError, err:
         print "Ignoring invalid key %s" % err
         pass
+
+    # Ignore the probes on the ignore list. Set them to "U" which means Unknown
+    # in the RRDtool specifications.
+    if config["misc"]["ignore"]:
+      ignores = config["misc"]["ignore"].upper().split(',')
+      for sens in ignores:
+        if sens[0] == "T":
+          temps[int(sens[1]) - 1] = "U"
+        elif sens[0] == "H":
+          hums[int(sens[1]) - 1] = "U"
 
     # Update RRDfile regardless of the graphs/time
     UpdateRRDfile(path, temprrd, temps)
@@ -231,6 +245,8 @@ if __name__ == '__main__':
                     help="Number of probes connected to WeatherDuino")
   parser.add_option("-p", "--path", metavar="PATH", default=".",
                     help="Destination path where the RRD & graphs are written")
+  parser.add_option("-i", "--ignore", metavar="IGNORE", default=None,
+                    help="Ignore Probe/Sensor. E.g. 'T1,H2' to ignore Probe 1 Temperature and Probe 2 Humidity")
   parser.add_option("-x", "--prefix", metavar="PREFIX", default="WeatherDuino",
                     help="Filename prefix for the RRD files.")
   (opts, args) = parser.parse_args()
@@ -245,7 +261,8 @@ if __name__ == '__main__':
                          "baud": opts.baud,
                          "num": opts.num },
              "files": { "path": opts.path,
-                        "prefix": opts.prefix } }
+                        "prefix": opts.prefix },
+             "misc": { "ignore" : opts.ignore } }
 # Check for config file and overwrite the config using this file.
   if opts.conf:
     # Some basic path expansion
