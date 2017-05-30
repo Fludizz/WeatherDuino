@@ -89,7 +89,7 @@ class WeatherDuinoListener(object):
     if temp[0] < 129 or humidity < 255:
       print 'Sensor %s:' % sensor
     if temp[0] < 129:
-      print '\ttemp: %d.%02d°' % temp
+      print '\ttemp: %d.%02d℃' % temp
     if humidity < 255:
       print '\thumidity: %d%%' % humidity
 
@@ -109,7 +109,7 @@ class LogWeatherDuinoListener(WeatherDuinoListener):
     if temp[0] < 129 or humidity < 255:
       self.logfile.write('%s\tSensor %i:' % (time.strftime("%H:%M:%S"), sensor))
     if temp[0] < 129:
-      self.logfile.write('\ttemp: %d.%02d° - ' % temp)
+      self.logfile.write('\ttemp: %d.%02d℃ - ' % temp)
     if humidity < 255:
       self.logfile.write('\thumidity: %d%%' % humidity)
 
